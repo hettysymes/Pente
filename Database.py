@@ -1,6 +1,8 @@
 import sqlite3
 import pickle
 from datetime import datetime
+import Ui
+from Game import Game, GameRecord
 
 class HashTable:
 
@@ -44,8 +46,26 @@ def createTables():
     hashTable BLOB NOT NULL
     );"""
 
+    gameSQL = """
+    CREATE TABLE Game(
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+	whenSaved TEXT NOT NULL,
+	game BLOB NOT NULL,
+    winner TEXT NOT NULL,
+    computer INTEGER NOT NULL
+    );"""
+
+    playergameSQL = """
+    CREATE TABLE PlayerGame(
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT NOT NULL,
+    gameId INTEGER NOT NULL,
+    playerNo INTEGER NOT NULL
+    );"""
+
     conn, c = connect()
-    tableSQLDict = {"Player": playerSQL, "HashTable": hashtableSQL}
+    tableSQLDict = {"Player": playerSQL, "HashTable": hashtableSQL, "Game": gameSQL, "PlayerGame": playergameSQL}
     for tableName, sql in tableSQLDict.items():
         if not tableExists(tableName):
             c.execute(sql)
@@ -138,6 +158,97 @@ def isUniqueUsername(username):
     """
     players = getRecords(recordSQL, (username,))
     return players == []
+
+def saveGame(username1, username2, gameRecord):
+    name = gameRecord.name
+    whenSaved = gameRecord.whenSaved.strftime("%m/%d/%Y, %H:%M:%S")
+    game = pickle.dumps(gameRecord.game)
+    winner = gameRecord.winner
+    computer = gameRecord.computer
+
+    recordSQL = """
+    INSERT INTO Game(name, whenSaved, game, winner, computer)
+    VALUES(?, ?, ?, ?, ?);
+    """
+    
+    gameId = editTable(recordSQL, (name, whenSaved, game, winner, computer), getId=True)
+
+    invalidUsernames = [Ui.Player.GUEST, Ui.Player.COMP]
+    if username1 not in invalidUsernames:
+        savePlayerGame(username1, gameId, Game.P1)
+    if username2 not in invalidUsernames:
+        savePlayerGame(username2, gameId, Game.P2)
+
+def updateGame(gameRecord):
+    whenSaved = gameRecord.whenSaved.strftime("%m/%d/%Y, %H:%M:%S")
+    game = pickle.dumps(gameRecord.game)
+    winner = gameRecord.winner
+    id = gameRecord.id
+    recordSQL = """
+    UPDATE Game
+    SET whenSaved = ?, game = ?, winner = ?
+    WHERE id = ?;
+    """
+    editTable(recordSQL, (whenSaved, game, winner, id))
+
+def parseGames(games):
+    parsedGames = []
+    for game in games:
+        g = list(game) #[id, name, whenSaved, game, winner, computer]
+        g[2] = datetime.strptime(g[2], "%m/%d/%Y, %H:%M:%S") #whenSaved
+        g[3] = pickle.loads(g[3]) #game
+        gameRecord = GameRecord(g[0], g[1], g[2], g[3], g[4], g[5])
+        parsedGames.append(gameRecord)
+    return parsedGames
+
+def loadGames(username, winner):
+    recordSQL = """
+    SELECT Game.id, Game.name, Game.whenSaved, Game.game, Game.winner, Game.computer
+    FROM Game
+    INNER JOIN PlayerGame ON PlayerGame.gameId = Game.id
+    WHERE PlayerGame.username = ? AND Game.winner = ?
+    ORDER BY Game.whenSaved DESC;
+    """
+    games = getRecords(recordSQL, (username, winner))
+    return parseGames(games)
+
+def loadAllGames(username):
+    recordSQL = """
+    SELECT Game.id, Game.name, Game.whenSaved, Game.game, Game.winner, Game.computer
+    FROM Game
+    INNER JOIN PlayerGame ON PlayerGame.gameId = Game.id
+    WHERE PlayerGame.username = ?
+    ORDER BY Game.whenSaved DESC;
+    """
+    games = getRecords(recordSQL, (username,))
+    return parseGames(games)
+
+def getGame(id):
+    recordSQL = """
+    SELECT Game.id, Game.name, Game.whenSaved, Game.game, Game.winner, Game.computer
+    FROM Game
+    WHERE id = ?;
+    """
+    game = getRecords(recordSQL, (id,))
+    return parseGames(game)[0]
+
+def savePlayerGame(username, gameId, playerNo):
+    recordSQL = """
+    INSERT INTO PlayerGame(username, gameId, playerNo)
+    VALUES(?, ?, ?)
+    """
+    editTable(recordSQL, (username, gameId, playerNo))
+
+def getPlayerGameUsername(gameId, playerNo):
+    recordSQL = """
+    SELECT username
+    FROM PlayerGame
+    WHERE gameId = ? AND playerNo = ?;
+    """
+    records = getRecords(recordSQL, (gameId, playerNo))
+    if not records:
+        return False
+    return records[0][0]
 
 if __name__ == "__main__":
     pass

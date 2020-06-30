@@ -118,6 +118,16 @@ class Game:
         self.board, self.captures, self.player = Game.newState(self.board, self.captures, self.player, row, col)
         self.winner = Game.getWinner(self.board, self.captures)
 
+class GameRecord:
+
+    def __init__(self, id, name, whenSaved, game, winner, computer):
+        self.id = id
+        self.name = name
+        self.whenSaved = whenSaved
+        self.game = game
+        self.winner = winner
+        self.computer = computer
+
 if __name__ == "__main__":
     pass
 
