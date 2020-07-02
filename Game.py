@@ -120,7 +120,7 @@ class Game:
 
 class GameRecord:
 
-    def __init__(self, id, name, whenSaved, game, winner, computer):
+    def __init__(self, id=-1, name=-1, whenSaved=-1, game=-1, winner=-1, computer=-1):
         self.id = id
         self.name = name
         self.whenSaved = whenSaved

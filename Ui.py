@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from Game import Game, GameError
+from Game import Game, GameError, GameRecord
 from colorama import Fore, Style
 from enum import Enum, auto
 from datetime import datetime
@@ -24,6 +24,8 @@ class Terminal(Ui):
     def __init__(self):
         self.__player = Player.GUEST
         self.__opponent = Player.GUEST
+        self.__currGameRecord = None
+        self.__currPlayers = {Game.P1: Player.GUEST, Game.P2: Player.GUEST}
 
     @property
     def player(self):
@@ -41,9 +43,38 @@ class Terminal(Ui):
     def opponent(self, opponent):
         self.__opponent = opponent
 
+    @property
+    def currGameRecord(self):
+        return self.__currGameRecord
+    
+    @currGameRecord.setter
+    def currGameRecord(self, currGameRecord):
+        self.__currGameRecord = currGameRecord
+
+    @property
+    def currPlayers(self):
+        return self.__currPlayers
+
     def run(self):
         Database.createTables()
         self.displayMenu()
+
+    def viewGames(self):
+        games = Database.loadAllGames(self.player)
+        if not games:
+            print("There are no games to view.")
+        else:
+            for i, gameRecord in enumerate(games):
+                print(f"{i+1}. {self.gameString(gameRecord)}")
+            menu = """
+            Choose an option:
+            1. Load game
+            2. Go back
+            """
+            print(menu)
+            inp = self.getChoice(1, 2)
+            if inp == 1:
+                self.loadGame()
 
     def playGame(self):
         menu = """
@@ -54,11 +85,15 @@ class Terminal(Ui):
         print(menu)
         if self.getChoice(1, 2) == 2:
             self.login(Player.OPP)
+        self.currGameRecord = GameRecord(game=Game(19), computer=False)
+        self.__currPlayers[Game.P1] = self.player
+        self.__currPlayers[Game.P2] = self.opponent
+        print("Enter moves as the row immediately followed by the column, e.g. 3A or 3a.")
         self.play()
 
     def displayMenu(self):
         guestMethods = {1: self.playGame, 2: lambda: self.login(Player.MAIN), 3: self.createAccount, 4: quit}
-        memberMethods = {1: self.playGame, 2: self.logout, 3: quit}
+        memberMethods = {1: self.playGame, 2: self.viewGames, 3: self.logout, 4: quit}
 
         while 1:
 
@@ -66,7 +101,7 @@ class Terminal(Ui):
             Welcome to Pente!
 
             Choose an option:
-            1. Play
+            1. Play new game
             2. Login
             3. Create Account
             4. Quit
@@ -76,9 +111,10 @@ class Terminal(Ui):
             Welcome to Pente {self.player}!
 
             Choose an option:
-            1. Play
-            2. Logout
-            3. Quit
+            1. Play new game
+            2. View games
+            3. Logout
+            4. Quit
             """
 
             if self.player == Player.GUEST:
@@ -87,7 +123,7 @@ class Terminal(Ui):
                 guestMethods[inp]()
             else:
                 print(memberMenu)
-                inp = self.getChoice(1, 3)
+                inp = self.getChoice(1, 4)
                 memberMethods[inp]()
 
     def getYesNo(self, msg):
@@ -172,6 +208,27 @@ class Terminal(Ui):
         boardString += f"Player 2 captured pairs: {len(captures[Game.P2])}\n"
         print(boardString)
 
+    def gameString(self, gameRecord):
+        players = [Database.getPlayerGameUsername(gameRecord.id, Game.P1), Database.getPlayerGameUsername(gameRecord.id, Game.P2)]
+        for i in range(2):
+            if players[i] == False:
+                if gameRecord.computer:
+                    players[i] = "computer"
+                else:
+                    players[i] = "guest"
+        mode = f"{players[0]} v.s. {players[1]}"
+        whenSaved = datetime.strftime(gameRecord.whenSaved, "%m/%d/%Y, %H:%M:%S")
+        if gameRecord.winner == Game.P1:
+            status = "P1 won"
+        elif gameRecord.winner == Game.P2:
+            status = "P2 won"
+        elif gameRecord.winner == Game.DRAW:
+            status = "Draw"
+        else:
+            status = "ONGOING"
+        
+        return f"{gameRecord.name:25s}{mode:25s}saved on {whenSaved:25s}status: {status}"
+
     def getRowCol(self, board):
         while True:
             move = input("\nEnter move: ")
@@ -198,11 +255,51 @@ class Terminal(Ui):
             else:
                 return row, col
 
+    def saveGame(self, game):
+        self.currGameRecord.whenSaved, self.currGameRecord.game, self.currGameRecord.winner = datetime.now(), game, game.winner
+        if self.currGameRecord.id != -1:
+            Database.updateGame(self.__currGameRecord)
+        else:
+            name = input("Enter name to save game as: ")
+            self.currGameRecord.name = name
+            Database.saveGame(self.currPlayers[Game.P1], self.currPlayers[Game.P2], self.__currGameRecord)
+        print("Game saved successfully.")
+
+    def loadGame(self):
+        games = Database.loadGames(self.player, Game.ONGOING)
+        if not games:
+            print("There are no ongoing games.")
+        else:
+            print("Ongoing games:")
+            for i, gameRecord in enumerate(games):
+                print(f"{i+1}. {self.gameString(gameRecord)}")
+            print("Select a game (e.g. 1, 2...)")
+            inp = self.getChoice(1, i+1)
+            self.__currGameRecord = games[inp-1]
+            self.play()
+
+    def chooseContinue(self, game):
+        while 1:
+            inp = input("Press q to quit and any other key to continue > ")
+            if inp == "q":
+                nonGuests = [player for player in [self.player, self.opponent] if player != Player.GUEST and player != Player.COMP]
+                if nonGuests:
+                        if len(nonGuests) > 1:
+                            playerString = f"{nonGuests[0]}'s and {nonGuests[1]}'s accounts"
+                        else:
+                            playerString = f"{nonGuests[0]}'s account"
+                        yes = self.getYesNo(f"Would you like to save your game to {playerString}? (y/n) ")
+                        if yes:
+                            self.saveGame(game)
+                return False
+            return True
+
     def play(self):
-        game = Game(19)
+        game = self.currGameRecord.game
         print("\nTo enter a move, enter the row followed by the column e.g. 1A or 1a.\n")
         while game.winner == Game.ONGOING:
             self.printState(game.board, game.captures)
+            if not self.chooseContinue(game): return
             playerStr = "Player 1 to play" if game.player == Game.P1 else "Player 2 to play"
             print(playerStr)
             row, col = self.getRowCol(game.board)
