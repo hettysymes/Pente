@@ -4,6 +4,7 @@ from colorama import Fore, Style
 from enum import Enum, auto
 from datetime import datetime
 import Database
+import Ai
 
 class Ui (ABC):
 
@@ -59,6 +60,15 @@ class Terminal(Ui):
         Database.createTables()
         self.displayMenu()
 
+    def chooseMode(self):
+        menu = """
+        Please choose a game mode:
+        1. Player v.s. Player
+        2. Player v.s. Computer
+        """
+        print(menu)
+        return not (self.getChoice(1, 2)%2)
+
     def viewGames(self):
         games = Database.loadAllGames(self.player)
         if not games:
@@ -77,15 +87,20 @@ class Terminal(Ui):
                 self.loadGame()
 
     def playGame(self):
-        menu = """
-        The other player will:
-        1. Play as a guest
-        2. Login
-        """
-        print(menu)
-        if self.getChoice(1, 2) == 2:
-            self.login(Player.OPP)
-        self.currGameRecord = GameRecord(game=Game(19), computer=False)
+        compMode = self.chooseMode()
+        self.currGameRecord = GameRecord(game=Game(19), computer=compMode)
+        if not compMode:
+            self.opponent = Player.GUEST
+            menu = """
+            The other player will:
+            1. Play as a guest
+            2. Login
+            """
+            print(menu)
+            if self.getChoice(1, 2) == 2:
+                self.login(Player.OPP)
+        else:
+            self.opponent = Player.COMP
         self.__currPlayers[Game.P1] = self.player
         self.__currPlayers[Game.P2] = self.opponent
         print("Enter moves as the row immediately followed by the column, e.g. 3A or 3a.")
@@ -302,7 +317,10 @@ class Terminal(Ui):
             if not self.chooseContinue(game): return
             playerStr = "Player 1 to play" if game.player == Game.P1 else "Player 2 to play"
             print(playerStr)
-            row, col = self.getRowCol(game.board)
+            if self.currPlayers[game.player] == Player.COMP:
+                row, col = Ai.play(game.board, game.captures, game.player)
+            else:
+                row, col = self.getRowCol(game.board)
             game.play(row, col)
         self.printState(game.board, game.captures)
         if game.winner == Game.P1:
