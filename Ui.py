@@ -87,12 +87,15 @@ class Terminal(Ui):
             menu = """
             Choose an option:
             1. Load game
-            2. Go back
+            2. Delete game
+            3. Go back
             """
             print(menu)
-            inp = self.getChoice(1, 2)
+            inp = self.getChoice(1, 3)
             if inp == 1:
                 self.loadGame()
+            elif inp == 2:
+                self.deleteGame(games)
 
     def playGame(self):
         compMode = self.chooseMode()
@@ -302,6 +305,12 @@ class Terminal(Ui):
             inp = self.getChoice(1, i+1)
             self.__currGameRecord = games[inp-1]
             self.play()
+
+    def deleteGame(self, games):
+        print("Which game would you like to delete? (e.g. 1, 2...)")
+        inp = self.getChoice(1, len(games))
+        Database.deleteGame(games[inp-1].id)
+        print(f"Game '{games[inp-1].name}' successfully deleted.")
 
     def chooseContinue(self, game):
         while 1:

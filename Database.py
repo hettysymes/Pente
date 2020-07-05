@@ -250,5 +250,18 @@ def getPlayerGameUsername(gameId, playerNo):
         return False
     return records[0][0]
 
+def deleteGame(gameId):
+    recordSQL = """
+    DELETE FROM Game
+    WHERE Game.id = ?;
+    """
+    editTable(recordSQL, (gameId,))
+
+    recordSQL = """
+    DELETE FROM PlayerGame
+    WHERE PlayerGame.gameId = ?;
+    """
+    editTable(recordSQL, (gameId,))
+
 if __name__ == "__main__":
     pass
