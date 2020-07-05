@@ -69,6 +69,14 @@ class Terminal(Ui):
         print(menu)
         return not (self.getChoice(1, 2)%2)
 
+    def choosePlayer(self):
+        if self.player == Player.GUEST and self.opponent == Player.GUEST:
+            return Game.P1
+        playerTitle = "the guest" if self.player == Player.GUEST else self.player
+        print(f"Would {playerTitle} like to be player 1 or 2? (1/2) ")
+        inp = self.getChoice(1, 2)
+        return [Game.P1, Game.P2][inp-1]
+
     def viewGames(self):
         games = Database.loadAllGames(self.player)
         if not games:
@@ -101,8 +109,10 @@ class Terminal(Ui):
                 self.login(Player.OPP)
         else:
             self.opponent = Player.COMP
-        self.__currPlayers[Game.P1] = self.player
-        self.__currPlayers[Game.P2] = self.opponent
+        player = self.choosePlayer()
+        otherPlayer = Game.P2 if player == Game.P1 else Game.P1
+        self.currPlayers[player] = self.player
+        self.currPlayers[otherPlayer] = self.opponent
         print("Enter moves as the row immediately followed by the column, e.g. 3A or 3a.")
         self.play()
 
