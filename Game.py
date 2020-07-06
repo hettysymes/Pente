@@ -17,6 +17,7 @@ class Game:
         self.__captures = {Game.P1: [], Game.P2: []}
         self.__winner = Game.ONGOING
         self.__player = Game.P1
+        self.__moveStack = MoveStack()
 
     @property
     def board(self):
@@ -49,6 +50,10 @@ class Game:
     @player.setter
     def player(self, player):
         self.__player = player
+
+    @property
+    def moveStack(self):
+        return self.__moveStack
 
     @staticmethod
     def inRow(board, row, col, pattern):
@@ -117,6 +122,42 @@ class Game:
     def play(self, row, col):
         self.board, self.captures, self.player = Game.newState(self.board, self.captures, self.player, row, col)
         self.winner = Game.getWinner(self.board, self.captures)
+        self.moveStack.push(deepcopy(self.captures), row, col)
+
+    def undo(self):
+        row, col = self.moveStack.pop()[1:]
+        if self.moveStack.isEmpty():
+            captures = {Game.P1: [], Game.P2: []}
+        else:
+            captures = self.moveStack.peek()[0]
+        otherPlayer = self.player
+        self.player = Game.P1 if self.player == Game.P2 else Game.P2
+        while len(captures[self.player]) != len(self.captures[self.player]):
+            lastPair = self.captures[self.player].pop()
+            for cap in lastPair:
+                self.board[cap[0]][cap[1]] = otherPlayer
+        self.board[row][col] = Game.EMPTY
+
+class MoveStack:
+
+    def __init__(self):
+        self.__stack = []
+
+    def isEmpty(self):
+        return self.__stack == []
+
+    def push(self, captures, row, col):
+        self.__stack.append((captures, row, col))
+
+    def pop(self):
+        if self.isEmpty():
+            raise GameError("There have been no previous moves")
+        return self.__stack.pop()
+    
+    def peek(self):
+        if self.isEmpty():
+            raise GameError("There have been no previous moves")
+        return self.__stack[-1]
 
 class GameRecord:
 

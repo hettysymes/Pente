@@ -314,7 +314,7 @@ class Terminal(Ui):
 
     def chooseContinue(self, game):
         while 1:
-            inp = input("Press q to quit and any other key to continue > ")
+            inp = input("Press q to quit, u to undo, and any other key to continue > ")
             if inp == "q":
                 nonGuests = [player for player in [self.player, self.opponent] if player != Player.GUEST and player != Player.COMP]
                 if nonGuests:
@@ -326,7 +326,15 @@ class Terminal(Ui):
                         if yes:
                             self.saveGame(game)
                 return False
-            return True
+            elif inp == "u":
+                try:
+                    game.undo()
+                except GameError as e:
+                    print(f"Error: {e}")
+                else:
+                    self.printState(game.board, game.captures)
+            else:
+                return True
 
     def play(self):
         game = self.currGameRecord.game
