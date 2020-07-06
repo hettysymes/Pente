@@ -5,6 +5,8 @@ from enum import Enum, auto
 from datetime import datetime
 import Database
 import Ai
+from tkinter import *
+from functools import partial
 
 class Ui (ABC):
 
@@ -15,10 +17,38 @@ class Ui (ABC):
 class Gui(Ui):
 
     def __init__(self):
-        pass
+        self.root = Tk()
+        self.gridsize = 5
+        self.canvasSize = 500
+        self.squareSize = int(self.canvasSize/(self.gridsize+1))
+        self.c = Canvas(self.root, height=self.canvasSize, width=self.canvasSize, bg='white')
+        self.c.pack(expand=True)
+        self.buttonGrid = self.getButtons()
+        self.c.bind('<Configure>', self.createGrid)
 
     def run(self):
-        pass
+        self.root.mainloop()
+
+    def getButtons(self):
+        buttonGrid = [[Button(self.root, command = partial(self.place, (x, y))) for x in range(self.gridsize)] for y in range(self.gridsize)]
+        for y, buttonRow in enumerate(buttonGrid):
+            for x, button in enumerate(buttonRow):
+                button.configure(width = 5, height = 2, activebackground = "#33B5E5", relief = FLAT)
+                button_window = self.c.create_window(self.squareSize*(x+1), self.squareSize*(y+1), window=button)
+
+    def place(self, coords):
+        x, y = coords
+        print(f"x: {x} y: {y}")
+
+    def createGrid(self, event=None):
+        w = self.c.winfo_width()
+        h = self.c.winfo_height()
+
+        for i in range(0, w, self.squareSize):
+            self.c.create_line([(i, 0), (i, h)])
+
+        for i in range(0, h, self.squareSize):
+            self.c.create_line([(0, i), (w, i)])
 
 class Terminal(Ui):
 
@@ -364,4 +394,5 @@ class Player(Enum):
     COMP = auto()
 
 if __name__ == "__main__":
-    pass
+    gui = Gui()
+    gui.run()
