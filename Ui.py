@@ -25,8 +25,10 @@ class Gui(Ui):
         self.createImages()
         self.c = Canvas(self.root, height=self.canvasSize, width=self.canvasSize, bg='white')
         self.c.pack(expand=True)
-        self.buttonGrid = self.getButtons()
+        self.buttons = self.getButtons()
         self.c.bind('<Configure>', self.createGrid)
+        self.game = Game(19)
+        self.stop = False
 
     def run(self):
         self.root.mainloop()
@@ -53,15 +55,41 @@ class Gui(Ui):
 
     def getButtons(self):
         photoImg = PhotoImage(file="emptyCell.png")
-        buttonGrid = [[Button(self.root, width = self.squareSize, height = self.squareSize, image = photoImg, bg = "white", relief = FLAT, command = partial(self.place, (x, y))) for x in range(self.gridsize)] for y in range(self.gridsize)]
-        for y, buttonRow in enumerate(buttonGrid):
+        buttons = [[Button(self.root, width = self.squareSize, height = self.squareSize, image = photoImg, bg = "white", relief = FLAT, command = partial(self.place, (x, y))) for x in range(self.gridsize)] for y in range(self.gridsize)]
+        for y, buttonRow in enumerate(buttons):
             for x, button in enumerate(buttonRow):
                 button.image = photoImg
                 button_window = self.c.create_window(self.squareSize*(x+1), self.squareSize*(y+1), window=button)
+        return buttons
 
     def place(self, coords):
-        x, y = coords
-        print(f"x: {x} y: {y}")
+        if self.stop: return
+        row, col = coords
+        try:
+            Game.validateRowCol(row, col, self.game.board)
+        except GameError as e:
+            print(f"Error: {e}")
+            print("Try again")
+        else:
+            self.play(row, col)
+            self.updateBoard()
+
+    def updateBoard(self):
+        for row in range(len(self.game.board)):
+            for col in range(len(self.game.board)):
+                self.updateCell(row, col, self.game.board[row][col])
+
+    def updateCell(self, row, col, piece):
+        if piece == Game.EMPTY:
+            filename = "emptyCell.png"
+        elif piece == Game.P1:
+            filename = "player1.png"
+        elif piece == Game.P2:
+            filename = "player2.png"
+        photoImg = PhotoImage(file=filename)
+        button = self.buttons[col][row]
+        button.configure(image=photoImg)
+        button.image = photoImg
 
     def createGrid(self, event=None):
         w = self.c.winfo_width()
@@ -72,6 +100,17 @@ class Gui(Ui):
 
         for i in range(0, h, self.squareSize):
             self.c.create_line([(0, i), (w, i)])
+
+    def play(self, row, col):
+        self.game.play(row, col)
+        if self.game.winner != Game.ONGOING:
+            if self.game.winner == Game.P1:
+                print("Player 1 has won!")
+            elif self.game.winner == Game.P2:
+                print("Player 2 has won!")
+            else:
+                print("It is a draw.")
+            self.stop = True
 
 class Terminal(Ui):
 
