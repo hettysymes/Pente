@@ -7,6 +7,7 @@ import Database
 import Ai
 from tkinter import *
 from functools import partial
+from PIL import Image, ImageDraw
 
 class Ui (ABC):
 
@@ -18,9 +19,10 @@ class Gui(Ui):
 
     def __init__(self):
         self.root = Tk()
-        self.gridsize = 5
-        self.canvasSize = 500
+        self.gridsize = 19
+        self.canvasSize = 800
         self.squareSize = int(self.canvasSize/(self.gridsize+1))
+        self.createImages()
         self.c = Canvas(self.root, height=self.canvasSize, width=self.canvasSize, bg='white')
         self.c.pack(expand=True)
         self.buttonGrid = self.getButtons()
@@ -29,11 +31,32 @@ class Gui(Ui):
     def run(self):
         self.root.mainloop()
 
+    def createImages(self):
+        self.createEmptyCellImage()
+        self.createPlayerImage("red", "player1.png")
+        self.createPlayerImage("blue", "player2.png")
+
+    def createEmptyCellImage(self):
+        img = Image.new('RGBA', (self.squareSize+6, self.squareSize+6), (255, 0, 0, 0))
+        draw = ImageDraw.Draw(img)
+        draw.line((img.size[0]/2, 0, img.size[0]/2, img.size[1]), fill="black")
+        draw.line((0, img.size[1]/2, img.size[0], img.size[1]/2), fill="black")
+        img.save('emptyCell.png', 'PNG')
+
+    def createPlayerImage(self, colour, name):
+        img = Image.new('RGBA', (self.squareSize+6, self.squareSize+6), (255, 0, 0, 0))
+        draw = ImageDraw.Draw(img)
+        draw.line((img.size[0]/2, 0, img.size[0]/2, img.size[1]), fill="black")
+        draw.line((0, img.size[1]/2, img.size[0], img.size[1]/2), fill="black")
+        draw.ellipse((img.size[0]/4, img.size[1]/4, img.size[0]*3/4, img.size[1]*3/4), fill=colour, outline="black")
+        img.save(name, 'PNG')
+
     def getButtons(self):
-        buttonGrid = [[Button(self.root, command = partial(self.place, (x, y))) for x in range(self.gridsize)] for y in range(self.gridsize)]
+        photoImg = PhotoImage(file="emptyCell.png")
+        buttonGrid = [[Button(self.root, width = self.squareSize, height = self.squareSize, image = photoImg, bg = "white", relief = FLAT, command = partial(self.place, (x, y))) for x in range(self.gridsize)] for y in range(self.gridsize)]
         for y, buttonRow in enumerate(buttonGrid):
             for x, button in enumerate(buttonRow):
-                button.configure(width = 5, height = 2, activebackground = "#33B5E5", relief = FLAT)
+                button.image = photoImg
                 button_window = self.c.create_window(self.squareSize*(x+1), self.squareSize*(y+1), window=button)
 
     def place(self, coords):
