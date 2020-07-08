@@ -18,74 +18,91 @@ class Ui (ABC):
 class Gui(Ui):
 
     def __init__(self):
+        self.MAX_CANVAS_SIZE = 730
+        self.player = Player.GUEST
+        self.opponent = Player.GUEST
+        self.currGameRecord = None
+        self.currPlayers = {Game.P1: Player.GUEST, Game.P2: Player.GUEST}
+        self.currentBoard = None
+
         self.root = Tk()
-        self.gridsize = 19
-        self.canvasSize = 19*40
-        self.squareSize = int(self.canvasSize/(self.gridsize+1))
-        self.createImages()
+
+        self.headLabel = Label(self.root, text="Player v.s. Player", bg="#D3D3D3", fg="black", font=("Helvetica", 18))
+        self.headLabel.grid(row=0, column=1, sticky="NESW")
         self.p1CapLabel = Label(self.root, text="Player 1 captured pairs: 0", bg="white", fg="red", font=("Helvetica", 18))
-        self.p1CapLabel.grid(row=0, column=0, sticky="NESW")
+        self.p1CapLabel.grid(row=1, column=1, sticky="NESW")
         self.p2CapLabel = Label(self.root, text="Player 2 captured pairs: 0", bg="white", fg="blue", font=("Helvetica", 18))
-        self.p2CapLabel.grid(row=2, column=0, sticky="NESW")
-        self.c = Canvas(self.root, height=self.canvasSize, width=self.canvasSize, bg='white')
-        self.c.grid(row=1, column=0)
-        self.buttons = self.getButtons()
-        self.c.bind('<Configure>', self.createGrid)
-        self.game = Game(19)
-        self.stop = False
+        self.p2CapLabel.grid(row=3, column=1, sticky="NESW")
+        self.playButton = Button(self.root, text="Play", command=self.playGame)
+        self.playButton.grid(row=0, column=0)
+
+        self.c = None
+        self.createCanvas(empty=True)
+
+    def playGame(self):
+        gridsize = 19
+        self.currGameRecord = GameRecord(game=Game(gridsize), computer=False)
+        self.currentBoard = self.currGameRecord.game.board
+        canvasSize = self.MAX_CANVAS_SIZE - (self.MAX_CANVAS_SIZE%gridsize)
+        squareSize = canvasSize//(gridsize+1)
+        self.createImages(squareSize)
+        self.createCanvas(squareSize, canvasSize)
+        self.buttons = self.getButtons(squareSize, gridsize)
 
     def run(self):
         self.root.mainloop()
 
-    def createImages(self):
-        self.createEmptyCellImage()
-        self.createPlayerImage("red", "player1.png")
-        self.createPlayerImage("blue", "player2.png")
+    def createImages(self, squareSize):
+        self.createEmptyCellImage(squareSize)
+        self.createPlayerImage(squareSize, "red", "player1.png")
+        self.createPlayerImage(squareSize, "blue", "player2.png")
 
-    def createEmptyCellImage(self):
-        img = Image.new('RGBA', (self.squareSize+6, self.squareSize+6), (255, 0, 0, 0))
+    def createEmptyCellImage(self, squareSize):
+        img = Image.new("RGBA", (squareSize+6, squareSize+6), (255, 0, 0, 0))
         draw = ImageDraw.Draw(img)
         draw.line((img.size[0]/2, 0, img.size[0]/2, img.size[1]), fill="black")
         draw.line((0, img.size[1]/2, img.size[0], img.size[1]/2), fill="black")
-        img.save('emptyCell.png', 'PNG')
+        img.save("emptyCell.png", "PNG")
 
-    def createPlayerImage(self, colour, name):
-        img = Image.new('RGBA', (self.squareSize+6, self.squareSize+6), (255, 0, 0, 0))
+    def createPlayerImage(self, squareSize, colour, name):
+        img = Image.new("RGBA", (squareSize+6, squareSize+6), (255, 0, 0, 0))
         draw = ImageDraw.Draw(img)
         draw.line((img.size[0]/2, 0, img.size[0]/2, img.size[1]), fill="black")
         draw.line((0, img.size[1]/2, img.size[0], img.size[1]/2), fill="black")
         draw.ellipse((img.size[0]/4, img.size[1]/4, img.size[0]*3/4, img.size[1]*3/4), fill=colour, outline="black")
-        img.save(name, 'PNG')
+        img.save(name, "PNG")
 
-    def getButtons(self):
+    def getButtons(self, squareSize, gridsize):
         photoImg = PhotoImage(file="emptyCell.png")
-        buttons = [[Button(self.root, width = self.squareSize, height = self.squareSize, image = photoImg, bg = "white", relief = FLAT, command = partial(self.place, (x, y))) for x in range(self.gridsize)] for y in range(self.gridsize)]
+        buttons = [[Button(self.root, width = squareSize, height = squareSize, image = photoImg, bg = "white", relief = FLAT, command = partial(self.place, (x, y))) for x in range(gridsize)] for y in range(gridsize)]
         for y, buttonRow in enumerate(buttons):
             for x, button in enumerate(buttonRow):
                 button.image = photoImg
-                button_window = self.c.create_window(self.squareSize*(x+1), self.squareSize*(y+1), window=button)
+                button_window = self.c.create_window(squareSize*(x+1), squareSize*(y+1), window=button)
         return buttons
 
     def place(self, coords):
-        if self.stop: return
+        if self.currGameRecord.game.winner != Game.ONGOING: return
         row, col = coords
         try:
-            Game.validateRowCol(row, col, self.game.board)
+            Game.validateRowCol(row, col, self.currGameRecord.game.board)
         except GameError as e:
-            print(f"Error: {e}")
-            print("Try again")
+            self.headLabel.config(text=f"Error: {e}. Try again.")
         else:
+            self.headLabel.config(text="Player v.s. Player")
             self.play(row, col)
             self.updateState()
 
     def updateState(self):
-        if not self.stop:
-            self.p1CapLabel.config(text=f"Player 1 captured pairs: {len(self.game.captures[Game.P1])}")
-            self.p2CapLabel.config(text=f"Player 2 captured pairs: {len(self.game.captures[Game.P2])}")
+        self.p1CapLabel.config(text=f"Player 1 captured pairs: {len(self.currGameRecord.game.captures[Game.P1])}")
+        self.p2CapLabel.config(text=f"Player 2 captured pairs: {len(self.currGameRecord.game.captures[Game.P2])}")
 
-        for row in range(len(self.game.board)):
-            for col in range(len(self.game.board)):
-                self.updateCell(row, col, self.game.board[row][col])
+        for row in range(len(self.currGameRecord.game.board)):
+            for col in range(len(self.currGameRecord.game.board)):
+                if self.currGameRecord.game.board[row][col] == self.currentBoard[row][col]:
+                    continue
+                self.updateCell(row, col, self.currGameRecord.game.board[row][col])
+        self.currentBoard = self.currGameRecord.game.board
 
     def updateCell(self, row, col, piece):
         if piece == Game.EMPTY:
@@ -100,40 +117,34 @@ class Gui(Ui):
         button.image = photoImg
 
     def displayWin(self):
-        if self.game.winner == Game.P1:
+        if self.currGameRecord.game.winner == Game.P1:
             msg = "Player 1 WON!"
             colour = "red"
-        elif self.game.winner == Game.P2:
+        elif self.currGameRecord.game.winner == Game.P2:
             msg = "Player 2 WON!"
             colour = "blue"
         else:
             msg = "It is a draw."
-            colour = "gray"
+            colour = "black"
 
-        self.p1CapLabel.config(text=msg, fg=colour)
-        self.p2CapLabel.config(text=msg, fg=colour)
+        self.headLabel.config(text=msg, fg=colour)
 
-    def createGrid(self, event=None):
-        w = self.c.winfo_width()
-        h = self.c.winfo_height()
-
-        for i in range(0, w, self.squareSize):
-            self.c.create_line([(i, 0), (i, h)])
-
-        for i in range(0, h, self.squareSize):
-            self.c.create_line([(0, i), (w, i)])
+    def createCanvas(self, squareSize=None, canvasSize=None, empty=False):
+        if empty:
+            self.c = Canvas(self.root, height=self.MAX_CANVAS_SIZE, width=self.MAX_CANVAS_SIZE, bg="#D3D3D3")
+            self.c.grid(row=2, column=1)
+        else:
+            self.c = Canvas(self.root, height=canvasSize, width=canvasSize, bg="white")
+            self.c.grid(row=2, column=1)
+            for i in range(0, canvasSize, squareSize):
+                self.c.create_line([(i, 0), (i, canvasSize)])
+            for i in range(0, canvasSize, squareSize):
+                self.c.create_line([(0, i), (canvasSize, i)])
 
     def play(self, row, col):
-        self.game.play(row, col)
-        if self.game.winner != Game.ONGOING:
-            if self.game.winner == Game.P1:
-                print("Player 1 has won!")
-            elif self.game.winner == Game.P2:
-                print("Player 2 has won!")
-            else:
-                print("It is a draw.")
+        self.currGameRecord.game.play(row, col)
+        if self.currGameRecord.game.winner != Game.ONGOING:
             self.displayWin()
-            self.stop = True
 
 class Terminal(Ui):
 
