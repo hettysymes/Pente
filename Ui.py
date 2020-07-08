@@ -20,11 +20,15 @@ class Gui(Ui):
     def __init__(self):
         self.root = Tk()
         self.gridsize = 19
-        self.canvasSize = 800
+        self.canvasSize = 19*40
         self.squareSize = int(self.canvasSize/(self.gridsize+1))
         self.createImages()
+        self.p1CapLabel = Label(self.root, text="Player 1 captured pairs: 0", bg="white", fg="red", font=("Helvetica", 18))
+        self.p1CapLabel.grid(row=0, column=0, sticky="NESW")
+        self.p2CapLabel = Label(self.root, text="Player 2 captured pairs: 0", bg="white", fg="blue", font=("Helvetica", 18))
+        self.p2CapLabel.grid(row=2, column=0, sticky="NESW")
         self.c = Canvas(self.root, height=self.canvasSize, width=self.canvasSize, bg='white')
-        self.c.pack(expand=True)
+        self.c.grid(row=1, column=0)
         self.buttons = self.getButtons()
         self.c.bind('<Configure>', self.createGrid)
         self.game = Game(19)
@@ -72,9 +76,13 @@ class Gui(Ui):
             print("Try again")
         else:
             self.play(row, col)
-            self.updateBoard()
+            self.updateState()
 
-    def updateBoard(self):
+    def updateState(self):
+        if not self.stop:
+            self.p1CapLabel.config(text=f"Player 1 captured pairs: {len(self.game.captures[Game.P1])}")
+            self.p2CapLabel.config(text=f"Player 2 captured pairs: {len(self.game.captures[Game.P2])}")
+
         for row in range(len(self.game.board)):
             for col in range(len(self.game.board)):
                 self.updateCell(row, col, self.game.board[row][col])
@@ -90,6 +98,20 @@ class Gui(Ui):
         button = self.buttons[col][row]
         button.configure(image=photoImg)
         button.image = photoImg
+
+    def displayWin(self):
+        if self.game.winner == Game.P1:
+            msg = "Player 1 WON!"
+            colour = "red"
+        elif self.game.winner == Game.P2:
+            msg = "Player 2 WON!"
+            colour = "blue"
+        else:
+            msg = "It is a draw."
+            colour = "gray"
+
+        self.p1CapLabel.config(text=msg, fg=colour)
+        self.p2CapLabel.config(text=msg, fg=colour)
 
     def createGrid(self, event=None):
         w = self.c.winfo_width()
@@ -110,6 +132,7 @@ class Gui(Ui):
                 print("Player 2 has won!")
             else:
                 print("It is a draw.")
+            self.displayWin()
             self.stop = True
 
 class Terminal(Ui):
@@ -456,5 +479,4 @@ class Player(Enum):
     COMP = auto()
 
 if __name__ == "__main__":
-    gui = Gui()
-    gui.run()
+    pass
