@@ -26,23 +26,52 @@ class Gui(Ui):
         self.currentBoard = None
 
         self.root = Tk()
+        self.optionFrame = Frame(self.root)
+        self.optionFrame.grid(row=0, column=0)
         self.gameFrame = Frame(self.root)
-        self.gameFrame.grid(row=1, column=1)
+        self.gameFrame.grid(row=0, column=1)
 
         self.headLabel = Label(self.gameFrame, text="PENTE", bg="white", fg="black", font=("Helvetica", 18))
         self.headLabel.grid(row=0, column=0, sticky="NESW")
 
-        self.playButton = Button(self.root, text="Play", command=self.playGame)
+        self.playButton = Button(self.optionFrame, text="Play", command=self.playGame)
         self.playButton.grid(row=0, column=0)
-        self.clearButton = Button(self.root, text="Clear", command=partial(self.updateGameFrame, empty=True))
+        self.clearButton = Button(self.optionFrame, text="Clear", command=partial(self.updateGameFrame, empty=True))
         self.clearButton.grid(row=1, column=0)
+        self.loginButton = Button(self.optionFrame, text="Login", command=self.createLoginWindow)
+        self.loginButton.grid(row=2, column=0)
 
         self.c = Canvas()
         self.p1CapLabel = Label(self.gameFrame, relief="ridge", font=("Helvetica", 18))
         self.p1CapLabel.grid(row=1, column=0, sticky="NESW")
         self.p2CapLabel = Label(self.gameFrame, relief="ridge", font=("Helvetica", 18))
-        self.p2CapLabel.grid(row=3, column=0, sticky="NESW")
+        self.p2CapLabel.grid(row=2, column=0, sticky="NESW")
         self.updateGameFrame(empty=True)
+
+    def createLoginWindow(self):
+        loginWindow = Toplevel(self.root)
+        Label(loginWindow, text="Login").grid(row=0, column=0, columnspan=2, pady=10)
+        Label(loginWindow, text="Username").grid(row=1, column=0, padx=5)
+        usernameEntry = Entry(loginWindow)
+        usernameEntry.grid(row=1, column=1, padx=5)
+        Label(loginWindow, text="Password").grid(row=2, column=0, padx=5)
+        passwordEntry = Entry(loginWindow, show="*")
+        passwordEntry.grid(row=2, column=1, padx=5)
+        statusLabel = Label(loginWindow, text="")
+        statusLabel.grid(row=4, column=0, columnspan=2, pady=5)
+        Button(loginWindow, text="Confirm", command=partial(self.confirmLogin, loginWindow, self.player, usernameEntry, passwordEntry, statusLabel)).grid(row=3, column=0, columnspan=2, pady=10)
+
+    def confirmLogin(self, loginWindow, player, usernameEntry, passwordEntry, statusLabel):
+        username, password = usernameEntry.get(), passwordEntry.get()
+        if Database.checkPassword(username, password):
+                if player == Player.MAIN:
+                    self.player = username
+                else:
+                    self.opponent = username
+                loginWindow.destroy()
+        else:
+            statusLabel.config(text="Incorrect username or password")
+        
 
     def playGame(self):
         gridsize = 19
@@ -79,16 +108,15 @@ class Gui(Ui):
 
     def getButtons(self, squareSize, gridsize):
         photoImg = PhotoImage(file="emptyCell.png")
-        buttons = [[Button(self.root, width = squareSize, height = squareSize, image = photoImg, bg = "white", relief = FLAT, command = partial(self.place, (x, y))) for x in range(gridsize)] for y in range(gridsize)]
+        buttons = [[Button(self.root, width = squareSize, height = squareSize, image = photoImg, bg = "white", relief = FLAT, command = partial(self.place, x, y)) for x in range(gridsize)] for y in range(gridsize)]
         for y, buttonRow in enumerate(buttons):
             for x, button in enumerate(buttonRow):
                 button.image = photoImg
                 button_window = self.c.create_window(squareSize*(x+1), squareSize*(y+1), window=button)
         return buttons
 
-    def place(self, coords):
+    def place(self, row, col):
         if self.currGameRecord.game.winner != Game.ONGOING: return
-        row, col = coords
         try:
             Game.validateRowCol(row, col, self.currGameRecord.game.board)
         except GameError as e:
