@@ -26,18 +26,23 @@ class Gui(Ui):
         self.currentBoard = None
 
         self.root = Tk()
+        self.gameFrame = Frame(self.root)
+        self.gameFrame.grid(row=1, column=1)
 
-        self.headLabel = Label(self.root, text="Player v.s. Player", bg="#D3D3D3", fg="black", font=("Helvetica", 18))
-        self.headLabel.grid(row=0, column=1, sticky="NESW")
-        self.p1CapLabel = Label(self.root, text="Player 1 captured pairs: 0", bg="white", fg="red", font=("Helvetica", 18))
-        self.p1CapLabel.grid(row=1, column=1, sticky="NESW")
-        self.p2CapLabel = Label(self.root, text="Player 2 captured pairs: 0", bg="white", fg="blue", font=("Helvetica", 18))
-        self.p2CapLabel.grid(row=3, column=1, sticky="NESW")
+        self.headLabel = Label(self.gameFrame, text="PENTE", bg="white", fg="black", font=("Helvetica", 18))
+        self.headLabel.grid(row=0, column=0, sticky="NESW")
+
         self.playButton = Button(self.root, text="Play", command=self.playGame)
         self.playButton.grid(row=0, column=0)
+        self.clearButton = Button(self.root, text="Clear", command=partial(self.updateGameFrame, empty=True))
+        self.clearButton.grid(row=1, column=0)
 
-        self.c = None
-        self.createCanvas(empty=True)
+        self.c = Canvas()
+        self.p1CapLabel = Label(self.gameFrame, relief="ridge", font=("Helvetica", 18))
+        self.p1CapLabel.grid(row=1, column=0, sticky="NESW")
+        self.p2CapLabel = Label(self.gameFrame, relief="ridge", font=("Helvetica", 18))
+        self.p2CapLabel.grid(row=3, column=0, sticky="NESW")
+        self.updateGameFrame(empty=True)
 
     def playGame(self):
         gridsize = 19
@@ -46,7 +51,7 @@ class Gui(Ui):
         canvasSize = self.MAX_CANVAS_SIZE - (self.MAX_CANVAS_SIZE%gridsize)
         squareSize = canvasSize//(gridsize+1)
         self.createImages(squareSize)
-        self.createCanvas(squareSize, canvasSize)
+        self.updateGameFrame(squareSize, canvasSize)
         self.buttons = self.getButtons(squareSize, gridsize)
 
     def run(self):
@@ -129,13 +134,21 @@ class Gui(Ui):
 
         self.headLabel.config(text=msg, fg=colour)
 
-    def createCanvas(self, squareSize=None, canvasSize=None, empty=False):
+    def updateGameFrame(self, squareSize=None, canvasSize=None, empty=False):
+        self.c.delete("all")
         if empty:
-            self.c = Canvas(self.root, height=self.MAX_CANVAS_SIZE, width=self.MAX_CANVAS_SIZE, bg="#D3D3D3")
-            self.c.grid(row=2, column=1)
+            self.headLabel.config(text="PENTE")
+            bgColour = "#D3D3D3"
+            self.p1CapLabel.config(text="", bg=bgColour)
+            self.p2CapLabel.config(text="", bg=bgColour)
+            self.c = Canvas(self.gameFrame, height=self.MAX_CANVAS_SIZE, width=self.MAX_CANVAS_SIZE, bg=bgColour)
+            self.c.grid(row=2, column=0)
         else:
-            self.c = Canvas(self.root, height=canvasSize, width=canvasSize, bg="white")
-            self.c.grid(row=2, column=1)
+            self.headLabel.config(text="Player v.s. Player")
+            self.p1CapLabel.config(text="Player 1 captured pairs: 0", bg="white", fg="red")
+            self.p2CapLabel.config(text="Player 2 captured pairs: 0", bg="white", fg="blue")
+            self.c = Canvas(self.gameFrame, height=canvasSize, width=canvasSize, bg="white")
+            self.c.grid(row=2, column=0)
             for i in range(0, canvasSize, squareSize):
                 self.c.create_line([(i, 0), (i, canvasSize)])
             for i in range(0, canvasSize, squareSize):
