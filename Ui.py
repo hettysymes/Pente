@@ -26,30 +26,75 @@ class Gui(Ui):
         self.currentBoard = None
 
         self.root = Tk()
-        self.optionFrame = Frame(self.root)
-        self.optionFrame.grid(row=0, column=0)
+        self.root.title("Pente")
+
+        self.menuFrame = Frame()
+        self.updateMenuFrame()
+
         self.gameFrame = Frame(self.root)
         self.gameFrame.grid(row=0, column=1)
 
+        self.optionFrame = Frame()
+        self.updateOptionFrame(False)
+
         self.headLabel = Label(self.gameFrame, text="PENTE", bg="white", fg="black", font=("Helvetica", 18))
         self.headLabel.grid(row=0, column=0, sticky="NESW")
-
-        self.playButton = Button(self.optionFrame, text="Play", command=self.playGame)
-        self.playButton.grid(row=0, column=0)
-        self.clearButton = Button(self.optionFrame, text="Clear", command=partial(self.updateGameFrame, empty=True))
-        self.clearButton.grid(row=1, column=0)
-        self.loginButton = Button(self.optionFrame, text="Login", command=self.createLoginWindow)
-        self.loginButton.grid(row=2, column=0)
 
         self.c = Canvas()
         self.p1CapLabel = Label(self.gameFrame, relief="ridge", font=("Helvetica", 18))
         self.p1CapLabel.grid(row=1, column=0, sticky="NESW")
         self.p2CapLabel = Label(self.gameFrame, relief="ridge", font=("Helvetica", 18))
-        self.p2CapLabel.grid(row=2, column=0, sticky="NESW")
-        self.updateGameFrame(empty=True)
+        self.p2CapLabel.grid(row=3, column=0, sticky="NESW")
 
-    def createLoginWindow(self):
+        self.updateMenuFrame()
+        self.updateFrames(empty=True)
+
+    def updateOptionFrame(self, playing):
+        self.optionFrame.destroy()
+        self.optionFrame = Frame(self.root)
+        self.optionFrame.grid(row=0, column=2)
+        if playing:
+            Button(self.optionFrame, text="Quit game", command=self.confirmQuit).grid(row=0, column=0)
+        else:
+            if self.player == Player.GUEST:
+                txt = "Press play new game to start playing"
+            else:
+                txt = "Press play new game or load a game to start playing"
+            Label(self.optionFrame, text=txt).grid(row=0, column=0)
+
+
+    def updateMenuFrame(self):
+        self.menuFrame.destroy()
+        self.menuFrame = Frame(self.root)
+        self.menuFrame.grid(row=0, column=0)
+        if self.player == Player.GUEST:
+            Label(self.menuFrame, text="Welcome to Pente!").grid(row=0, column=0)
+            Button(self.menuFrame, text="Play new game", command=self.playGame).grid(row=1, column=0)
+            Button(self.menuFrame, text="Login", command=partial(self.createLoginWindow, Player.MAIN)).grid(row=3, column=0)
+        else:
+            Label(self.menuFrame, text=f"Welcome {self.player} to Pente!").grid(row=0, column=0)
+            Button(self.menuFrame, text="Play new game", command=self.playGame).grid(row=1, column=0)
+            Button(self.menuFrame, text="Logout", command=self.logout).grid(row=3, column=0)
+
+    def confirmQuit(self):
+        confirmQuitWindow = Toplevel(self.root)
+        confirmQuitWindow.title("Quit?")
+        Label(confirmQuitWindow, text="Are you sure you want to quit?").grid(row=0, column=0, columnspan=2)
+        Label(confirmQuitWindow, text="(any unsaved progress will be lost)").grid(row=1, column=0, columnspan=2)
+        Button(confirmQuitWindow, text="Yes", command=partial(self.quitGame, confirmQuitWindow)).grid(row=2, column=0)
+        Button(confirmQuitWindow, text="No", command=confirmQuitWindow.destroy).grid(row=2, column=1)
+
+    def quitGame(self, confirmQuitWindow):
+        self.updateFrames(empty=True)
+        confirmQuitWindow.destroy()
+
+    def logout(self):
+        self.player = Player.GUEST
+        self.updateMenuFrame()
+
+    def createLoginWindow(self, player):
         loginWindow = Toplevel(self.root)
+        loginWindow.title("Login")
         Label(loginWindow, text="Login").grid(row=0, column=0, columnspan=2, pady=10)
         Label(loginWindow, text="Username").grid(row=1, column=0, padx=5)
         usernameEntry = Entry(loginWindow)
@@ -59,19 +104,19 @@ class Gui(Ui):
         passwordEntry.grid(row=2, column=1, padx=5)
         statusLabel = Label(loginWindow, text="")
         statusLabel.grid(row=4, column=0, columnspan=2, pady=5)
-        Button(loginWindow, text="Confirm", command=partial(self.confirmLogin, loginWindow, self.player, usernameEntry, passwordEntry, statusLabel)).grid(row=3, column=0, columnspan=2, pady=10)
+        Button(loginWindow, text="Confirm", command=partial(self.confirmLogin, loginWindow, player, usernameEntry, passwordEntry, statusLabel)).grid(row=3, column=0, columnspan=2, pady=10)
 
     def confirmLogin(self, loginWindow, player, usernameEntry, passwordEntry, statusLabel):
         username, password = usernameEntry.get(), passwordEntry.get()
         if Database.checkPassword(username, password):
                 if player == Player.MAIN:
                     self.player = username
+                    self.updateMenuFrame()
                 else:
                     self.opponent = username
                 loginWindow.destroy()
         else:
             statusLabel.config(text="Incorrect username or password")
-        
 
     def playGame(self):
         gridsize = 19
@@ -80,7 +125,7 @@ class Gui(Ui):
         canvasSize = self.MAX_CANVAS_SIZE - (self.MAX_CANVAS_SIZE%gridsize)
         squareSize = canvasSize//(gridsize+1)
         self.createImages(squareSize)
-        self.updateGameFrame(squareSize, canvasSize)
+        self.updateFrames(squareSize, canvasSize)
         self.buttons = self.getButtons(squareSize, gridsize)
 
     def run(self):
@@ -162,7 +207,11 @@ class Gui(Ui):
 
         self.headLabel.config(text=msg, fg=colour)
 
-    def updateGameFrame(self, squareSize=None, canvasSize=None, empty=False):
+    def updateFrames(self, squareSize=None, canvasSize=None, empty=False):
+        self.updateGameFrame(squareSize, canvasSize, empty)
+        self.updateOptionFrame(not empty)
+
+    def updateGameFrame(self, squareSize, canvasSize, empty):
         self.c.delete("all")
         if empty:
             self.headLabel.config(text="PENTE")
