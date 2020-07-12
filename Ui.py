@@ -51,6 +51,56 @@ class Gui(Ui):
         self.updateGameFrame()
         self.updateOptionFrame()
 
+    def getCurrPlayerStrings(self):
+        players = []
+        for player in [self.currPlayers[Game.P1], self.currPlayers[Game.P2]]:
+            p = self.player if player == Player.MAIN else self.opponent
+            if p == Player.GUEST:
+                players.append("Guest")
+            elif p == Player.COMP:
+                players.append("Computer")
+            else:
+                players.append(p)
+        return players
+
+    def createSaveGameWindow(self):
+        saveGameWindow = Toplevel(self.root)
+        saveGameWindow.title("Save game")
+        players = self.getCurrPlayerStrings()
+        winner = self.currGameRecord.game.winner
+        if winner == Game.P1:
+            gameStatus = "Player 1 won"
+        elif winner == Game.P2:
+            gameStatus = "Player 2 won"
+        elif winner == Game.DRAW:
+            gameStatus = "Draw"
+        else:
+            gameStatus = "Ongoing"
+        Label(saveGameWindow, text="Save game").grid(row=0, column=0, columnspan=2, pady=10)
+        Label(saveGameWindow, text="Player 1").grid(row=1, column=0, padx=5)
+        Label(saveGameWindow, text=players[0]).grid(row=1, column=1, padx=5)
+        Label(saveGameWindow, text="Player 2").grid(row=2, column=0, padx=5)
+        Label(saveGameWindow, text=players[1]).grid(row=2, column=1, padx=5)
+        Label(saveGameWindow, text="Game status").grid(row=3, column=0, padx=5)
+        Label(saveGameWindow, text=gameStatus).grid(row=3, column=1, padx=5)
+        Label(saveGameWindow, text="Save game as").grid(row=4, column=0, padx=5)
+        gameNameEntry = Entry(saveGameWindow)
+        gameNameEntry.grid(row=4, column=1, padx=5)
+        statusLabel = Label(saveGameWindow, text="")
+        statusLabel.grid(row=6, column=0, columnspan=2, pady=5)
+        Button(saveGameWindow, text="Confirm", command=partial(self.saveGame, saveGameWindow, gameNameEntry, statusLabel)).grid(row=5, column=0, columnspan=2, pady=10)
+
+    def saveGame(self, saveGameWindow, gameNameEntry, statusLabel):
+        gameName = gameNameEntry.get()
+        if gameName == "":
+            statusLabel.config(text="Please enter a name to save the game as")
+        else:
+            self.currGameRecord.whenSaved, self.currGameRecord.name = datetime.now(), gameName
+            p1 = self.player if self.currPlayers[Game.P1] == Player.MAIN else self.opponent
+            p2 = self.player if self.currPlayers[Game.P2] == Player.MAIN else self.opponent
+            Database.saveGame(p1, p2, self.currGameRecord)
+            saveGameWindow.destroy()
+
     def createAccountWindow(self):
         createAccountWindow = Toplevel(self.root)
         createAccountWindow.title("Create Account")
@@ -81,12 +131,15 @@ class Gui(Ui):
             self.player = username
             self.updateMenuFrame()
             self.updateHeadLabel()
+            self.updateOptionFrame()
             createAccountWindow.destroy()
 
     def updateOptionFrame(self):
         for widget in self.optionFrame.winfo_children(): widget.destroy()
         if self.playing:
             Button(self.optionFrame, text="Quit game", command=self.confirmQuit).grid(row=0, column=0, padx=10, pady=5)
+            if self.player != Player.GUEST or (self.opponent not in [Player.GUEST, Player.COMP]):
+                Button(self.optionFrame, text="Save game", command=self.createSaveGameWindow).grid(row=1, column=0, padx=10, pady=5)
         else:
             Label(self.optionFrame, text="Start playing?").grid(row=0, column=0, padx=10, pady=5)
 
@@ -120,6 +173,7 @@ class Gui(Ui):
         self.player = Player.GUEST
         self.updateMenuFrame()
         self.updateHeadLabel()
+        self.updateOptionFrame()
 
     def createLoginWindow(self, player):
         loginWindow = Toplevel(self.root)
@@ -144,6 +198,7 @@ class Gui(Ui):
                 else:
                     self.opponent = username
                 self.updateHeadLabel()
+                self.updateOptionFrame()
                 loginWindow.destroy()
         else:
             statusLabel.config(text="Incorrect username or password")
@@ -152,15 +207,7 @@ class Gui(Ui):
         if not self.playing:
             self.headLabel.config(text="PENTE", fg="black")
         else:
-            players = []
-            for player in [self.currPlayers[Game.P1], self.currPlayers[Game.P2]]:
-                player = self.player if player == Player.MAIN else self.opponent
-                if player == Player.GUEST:
-                    players.append("Guest")
-                elif player == Player.COMP:
-                    players.append("Computer")
-                else:
-                    players.append(player)
+            players = self.getCurrPlayerStrings()
             self.headLabel.config(text=f"{players[0]} v.s. {players[1]}")
 
     def playGame(self):
@@ -506,11 +553,11 @@ class Terminal(Ui):
                     players[i] = "guest"
         mode = f"{players[0]} v.s. {players[1]}"
         whenSaved = datetime.strftime(gameRecord.whenSaved, "%m/%d/%Y, %H:%M:%S")
-        if gameRecord.winner == Game.P1:
+        if gameRecord.game.winner == Game.P1:
             status = "P1 won"
-        elif gameRecord.winner == Game.P2:
+        elif gameRecord.game.winner == Game.P2:
             status = "P2 won"
-        elif gameRecord.winner == Game.DRAW:
+        elif gameRecord.game.winner == Game.DRAW:
             status = "Draw"
         else:
             status = "ONGOING"
@@ -544,7 +591,7 @@ class Terminal(Ui):
                 return row, col
 
     def saveGame(self, game):
-        self.currGameRecord.whenSaved, self.currGameRecord.game, self.currGameRecord.winner = datetime.now(), game, game.winner
+        self.currGameRecord.whenSaved, self.currGameRecord.game = datetime.now(), game
         if self.currGameRecord.id != -1:
             Database.updateGame(self.__currGameRecord)
         else:
