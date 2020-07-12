@@ -51,6 +51,38 @@ class Gui(Ui):
         self.updateGameFrame()
         self.updateOptionFrame()
 
+    def createAccountWindow(self):
+        createAccountWindow = Toplevel(self.root)
+        createAccountWindow.title("Create Account")
+        Label(createAccountWindow, text="Create Account").grid(row=0, column=0, columnspan=2, pady=10)
+        Label(createAccountWindow, text="Username").grid(row=1, column=0, padx=5)
+        usernameEntry = Entry(createAccountWindow)
+        usernameEntry.grid(row=1, column=1, padx=5)
+        Label(createAccountWindow, text="Password").grid(row=2, column=0, padx=5)
+        passwordEntry1 = Entry(createAccountWindow, show="*")
+        passwordEntry1.grid(row=2, column=1, padx=5)
+        Label(createAccountWindow, text="Confirm password").grid(row=3, column=0, padx=5)
+        passwordEntry2 = Entry(createAccountWindow, show="*")
+        passwordEntry2.grid(row=3, column=1, padx=5)
+        statusLabel = Label(createAccountWindow, text="")
+        statusLabel.grid(row=5, column=0, columnspan=2, pady=5)
+        Button(createAccountWindow, text="Confirm", command=partial(self.createAccount, createAccountWindow, usernameEntry, passwordEntry1, passwordEntry2, statusLabel)).grid(row=4, column=0, columnspan=2, pady=10)
+
+    def createAccount(self, createAccountWindow, usernameEntry, passwordEntry1, passwordEntry2, statusLabel):
+        username, password1, password2 = usernameEntry.get(), passwordEntry1.get(), passwordEntry2.get()
+        if username == "" or password1 == "" or password2 == "":
+            statusLabel.config(text="Please make sure no entries are blank")
+        elif not Database.isUniqueUsername(username):
+            statusLabel.config(text="That username has been taken. Please try again.")
+        elif password1 != password2:
+            statusLabel.config(text="Error: passwords do not match")
+        else:
+            Database.savePlayer(username, password1, datetime.now())
+            self.player = username
+            self.updateMenuFrame()
+            self.updateHeadLabel()
+            createAccountWindow.destroy()
+
     def updateOptionFrame(self):
         for widget in self.optionFrame.winfo_children(): widget.destroy()
         if self.playing:
@@ -64,6 +96,7 @@ class Gui(Ui):
             Label(self.menuFrame, text="Welcome to Pente!").grid(row=0, column=0, padx=10, pady=5)
             Button(self.menuFrame, text="Play new game", command=self.playGame).grid(row=1, column=0, padx=10, pady=5)
             Button(self.menuFrame, text="Login", command=partial(self.createLoginWindow, Player.MAIN)).grid(row=3, column=0, padx=10, pady=5)
+            Button(self.menuFrame, text="Create Account", command=self.createAccountWindow).grid(row=4, column=0, padx=10, pady=5)
         else:
             Label(self.menuFrame, text=f"Welcome {self.player} to Pente!").grid(row=0, column=0, padx=10, pady=5)
             Button(self.menuFrame, text="Play new game", command=self.playGame).grid(row=1, column=0, padx=10, pady=5)
