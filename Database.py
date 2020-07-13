@@ -134,7 +134,7 @@ def addPassword(username, password):
 
 def savePlayer(username, password, whenSaved):
     addPassword(username, password)
-    whenSaved = datetime.strftime(whenSaved, "%m/%d/%Y, %H:%M:%S")
+    whenSaved = datetime.strftime(whenSaved, "%d/%m/%Y, %H:%M:%S")
     recordSQL = """
     INSERT INTO Player(username, whenSaved)
     VALUES(?, ?);
@@ -161,7 +161,7 @@ def isUniqueUsername(username):
 
 def saveGame(username1, username2, gameRecord):
     name = gameRecord.name
-    whenSaved = gameRecord.whenSaved.strftime("%m/%d/%Y, %H:%M:%S")
+    whenSaved = gameRecord.whenSaved.strftime("%d/%m/%Y, %H:%M:%S")
     game = pickle.dumps(gameRecord.game)
     winner = gameRecord.game.winner
     computer = gameRecord.computer
@@ -180,7 +180,7 @@ def saveGame(username1, username2, gameRecord):
         savePlayerGame(username2, gameId, Game.P2)
 
 def updateGame(gameRecord):
-    whenSaved = gameRecord.whenSaved.strftime("%m/%d/%Y, %H:%M:%S")
+    whenSaved = gameRecord.whenSaved.strftime("%d/%m/%Y, %H:%M:%S")
     game = pickle.dumps(gameRecord.game)
     winner = gameRecord.game.winner
     id = gameRecord.id
@@ -195,7 +195,7 @@ def parseGames(games):
     parsedGames = []
     for game in games:
         g = list(game) #[id, name, whenSaved, game, winner, computer]
-        g[2] = datetime.strptime(g[2], "%m/%d/%Y, %H:%M:%S") #whenSaved
+        g[2] = datetime.strptime(g[2], "%d/%m/%Y, %H:%M:%S") #whenSaved
         g[3] = pickle.loads(g[3]) #game
         gameRecord = GameRecord(g[0], g[1], g[2], g[3], g[5])
         parsedGames.append(gameRecord)

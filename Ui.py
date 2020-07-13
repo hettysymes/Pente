@@ -51,6 +51,43 @@ class Gui(Ui):
         self.updateGameFrame()
         self.updateOptionFrame()
 
+    def gameString(self, gameRecord):
+        players = [Database.getPlayerGameUsername(gameRecord.id, Game.P1), Database.getPlayerGameUsername(gameRecord.id, Game.P2)]
+        for i in range(2):
+            if players[i] == False:
+                if gameRecord.computer:
+                    players[i] = "Computer"
+                else:
+                    players[i] = "Guest"
+        mode = f"{players[0]} v.s. {players[1]}"
+        whenSaved = datetime.strftime(gameRecord.whenSaved, "%d/%m/%Y, %H:%M:%S")
+        if gameRecord.game.winner == Game.P1:
+            status = "P1 won"
+        elif gameRecord.game.winner == Game.P2:
+            status = "P2 won"
+        elif gameRecord.game.winner == Game.DRAW:
+            status = "Draw"
+        else:
+            status = "ONGOING"
+        return f"{gameRecord.name:25s}{mode:25s}saved on {whenSaved:25s}status: {status}"
+
+    def createLoadGameWindow(self):
+        loadGameWindow = Toplevel(self.root)
+        loadGameWindow.title("Load game")
+        games = Database.loadGames(self.player, Game.ONGOING)
+        if not games:
+            Label(loadGameWindow, text="You have no ongoing games").grid(row=0, column=0, padx=10, pady=5)
+        else:
+            Label(loadGameWindow, text="Ongoing games:").grid(row=0, column=0, padx=10, pady=5)
+            for i, gameRecord in enumerate(games):
+                Button(loadGameWindow, text=f"{i+1}. {self.gameString(gameRecord)}", command=partial(self.loadGame, loadGameWindow, gameRecord)).grid(row=i+1, column=0, padx=5)
+            Label(loadGameWindow, text="Select a game to load").grid(row=i+2, column=0, padx=10, pady=5)
+
+    def loadGame(self, loadGameWindow, gameRecord):
+        self.currGameRecord = gameRecord
+        loadGameWindow.destroy()
+        self.playGame(new=False)
+
     def getCurrPlayerStrings(self):
         players = []
         for player in [self.currPlayers[Game.P1], self.currPlayers[Game.P2]]:
@@ -69,13 +106,13 @@ class Gui(Ui):
         players = self.getCurrPlayerStrings()
         winner = self.currGameRecord.game.winner
         if winner == Game.P1:
-            gameStatus = "Player 1 won"
+            gameStatus = "P1 won"
         elif winner == Game.P2:
-            gameStatus = "Player 2 won"
+            gameStatus = "P2 won"
         elif winner == Game.DRAW:
             gameStatus = "Draw"
         else:
-            gameStatus = "Ongoing"
+            gameStatus = "ONGOING"
         Label(saveGameWindow, text="Save game").grid(row=0, column=0, columnspan=2, pady=10)
         Label(saveGameWindow, text="Player 1").grid(row=1, column=0, padx=5)
         Label(saveGameWindow, text=players[0]).grid(row=1, column=1, padx=5)
@@ -139,7 +176,12 @@ class Gui(Ui):
         if self.playing:
             Button(self.optionFrame, text="Quit game", command=self.confirmQuit).grid(row=0, column=0, padx=10, pady=5)
             if self.player != Player.GUEST or (self.opponent not in [Player.GUEST, Player.COMP]):
-                Button(self.optionFrame, text="Save game", command=self.createSaveGameWindow).grid(row=1, column=0, padx=10, pady=5)
+                if self.currGameRecord.id == -1:
+                    command = self.createSaveGameWindow
+                else:
+                    self.currGameRecord.whenSaved = datetime.now()
+                    command = lambda: Database.updateGame(self.currGameRecord)
+                Button(self.optionFrame, text="Save game", command=command).grid(row=1, column=0, padx=10, pady=5)
         else:
             Label(self.optionFrame, text="Start playing?").grid(row=0, column=0, padx=10, pady=5)
 
@@ -148,11 +190,12 @@ class Gui(Ui):
         if self.player == Player.GUEST:
             Label(self.menuFrame, text="Welcome to Pente!").grid(row=0, column=0, padx=10, pady=5)
             Button(self.menuFrame, text="Play new game", command=self.playGame).grid(row=1, column=0, padx=10, pady=5)
-            Button(self.menuFrame, text="Login", command=partial(self.createLoginWindow, Player.MAIN)).grid(row=3, column=0, padx=10, pady=5)
-            Button(self.menuFrame, text="Create Account", command=self.createAccountWindow).grid(row=4, column=0, padx=10, pady=5)
+            Button(self.menuFrame, text="Login", command=partial(self.createLoginWindow, Player.MAIN)).grid(row=2, column=0, padx=10, pady=5)
+            Button(self.menuFrame, text="Create Account", command=self.createAccountWindow).grid(row=3, column=0, padx=10, pady=5)
         else:
             Label(self.menuFrame, text=f"Welcome {self.player} to Pente!").grid(row=0, column=0, padx=10, pady=5)
             Button(self.menuFrame, text="Play new game", command=self.playGame).grid(row=1, column=0, padx=10, pady=5)
+            Button(self.menuFrame, text="Load game", command=self.createLoadGameWindow).grid(row=2, column=0, padx=10, pady=5)
             Button(self.menuFrame, text="Logout", command=self.logout).grid(row=3, column=0, padx=10, pady=5)
 
     def confirmQuit(self):
@@ -210,21 +253,24 @@ class Gui(Ui):
             players = self.getCurrPlayerStrings()
             self.headLabel.config(text=f"{players[0]} v.s. {players[1]}")
 
-    def playGame(self):
-        gridsize = 19
+    def playGame(self, new=True):
         self.playing = True
         self.currPlayers[Game.P1] = Player.MAIN
         self.currPlayers[Game.P2] = Player.OPP
-        self.currGameRecord = GameRecord(game=Game(gridsize), computer=False)
-        self.currentBoard = self.currGameRecord.game.board
+        if new:
+            gridsize = 19
+            self.currGameRecord = GameRecord(game=Game(gridsize), computer=False)
+        else:
+            gridsize = len(self.currGameRecord.game.board)
+        self.currentBoard = [[Game.EMPTY for _ in range(gridsize)] for _ in range(gridsize)]
         canvasSize = self.MAX_CANVAS_SIZE - (self.MAX_CANVAS_SIZE%gridsize)
         squareSize = canvasSize//(gridsize+1)
         self.createImages(squareSize)
-        self.updateGameFrame(squareSize, canvasSize)
+        self.updateGameFrame(squareSize, canvasSize, gridsize)
         self.updateOptionFrame()
-        self.buttons = self.getButtons(squareSize, gridsize)
 
     def run(self):
+        Database.createTables()
         self.root.mainloop()
 
     def createImages(self, squareSize):
@@ -249,7 +295,7 @@ class Gui(Ui):
 
     def getButtons(self, squareSize, gridsize):
         photoImg = PhotoImage(file="emptyCell.png")
-        buttons = [[Button(self.root, width = squareSize, height = squareSize, image = photoImg, bg = "white", relief = FLAT, command = partial(self.place, x, y)) for x in range(gridsize)] for y in range(gridsize)]
+        buttons = [[Button(self.gameFrame, width = squareSize, height = squareSize, image = photoImg, bg = "white", relief = FLAT, command = partial(self.place, y, x)) for x in range(gridsize)] for y in range(gridsize)]
         for y, buttonRow in enumerate(buttons):
             for x, button in enumerate(buttonRow):
                 button.image = photoImg
@@ -286,7 +332,7 @@ class Gui(Ui):
         elif piece == Game.P2:
             filename = "player2.png"
         photoImg = PhotoImage(file=filename)
-        button = self.buttons[col][row]
+        button = self.buttons[row][col]
         button.configure(image=photoImg)
         button.image = photoImg
 
@@ -303,7 +349,7 @@ class Gui(Ui):
 
         self.headLabel.config(text=msg, fg=colour)
 
-    def updateGameFrame(self, squareSize=None, canvasSize=None):
+    def updateGameFrame(self, squareSize=None, canvasSize=None, gridsize=None):
         self.c.delete("all")
         self.updateHeadLabel()
         if not self.playing:
@@ -321,6 +367,8 @@ class Gui(Ui):
                 self.c.create_line([(i, 0), (i, canvasSize)])
             for i in range(0, canvasSize, squareSize):
                 self.c.create_line([(0, i), (canvasSize, i)])
+            self.buttons = self.getButtons(squareSize, gridsize)
+            self.updateState()
 
     def play(self, row, col):
         self.currGameRecord.game.play(row, col)
@@ -552,7 +600,7 @@ class Terminal(Ui):
                 else:
                     players[i] = "guest"
         mode = f"{players[0]} v.s. {players[1]}"
-        whenSaved = datetime.strftime(gameRecord.whenSaved, "%m/%d/%Y, %H:%M:%S")
+        whenSaved = datetime.strftime(gameRecord.whenSaved, "%d/%m/%Y, %H:%M:%S")
         if gameRecord.game.winner == Game.P1:
             status = "P1 won"
         elif gameRecord.game.winner == Game.P2:
