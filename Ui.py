@@ -22,7 +22,7 @@ class Gui(Ui):
         self.player = Player.GUEST
         self.opponent = Player.GUEST
         self.currGameRecord = None
-        self.currPlayers = {}
+        self.currPlayers = {Game.P1: Player.MAIN, Game.P2: Player.OPP}
         self.currentBoard = None
         self.playing = False
 
@@ -50,6 +50,42 @@ class Gui(Ui):
         self.updateMenuFrame()
         self.updateGameFrame()
         self.updateOptionFrame()
+
+    def chooseGameMode(self):
+        playGameWindow = Toplevel(self.root)
+        playGameWindow.title("Play")
+        Label(playGameWindow, text="Choose a game mode").grid(row=0, column=0, padx=10, pady=5)
+        Button(playGameWindow, text="Player v.s. Player", command=partial(self.confirmOppLogin, playGameWindow)).grid(row=1, column=0, padx=5)
+        Button(playGameWindow, text="Player v.s. Computer", command=partial(self.choosePlayer, playGameWindow, True)).grid(row=2, column=0, padx=5)     
+
+    def confirmOppLogin(self, playGameWindow):
+        for widget in playGameWindow.winfo_children(): widget.destroy()
+        Label(playGameWindow, text="Would the other player like to login?").grid(row=0, column=0, columnspan=2, padx=10, pady=5)
+        Button(playGameWindow, text="Yes", command=partial(self.createLoginWindow, Player.OPP, playGameWindow)).grid(row=1, column=0, padx=5)
+        Button(playGameWindow, text="No", command=partial(self.choosePlayer, playGameWindow, False)).grid(row=1, column=1, padx=5)
+
+    def choosePlayer(self, playGameWindow, computer):
+        playGameWindow.destroy()
+        if (not computer) and (self.player == Player.GUEST) and (self.opponent == Player.GUEST):
+            self.playGame(Game.P1)
+        else:
+            choosePlayerWindow = Toplevel(self.root)
+            choosePlayerWindow.title("Choose player")
+            if computer:
+                txt = "Would you like to be player 1 or player 2?"
+            else:
+                if self.player == Player.GUEST:
+                    player = "the guest"
+                else:
+                    player = self.player
+                txt = f"Would {player} like to be player 1 or player 2?"
+            Label(choosePlayerWindow, text=txt).grid(row=0, column=0, columnspan=2, padx=10, pady=5)
+            Button(choosePlayerWindow, text="Player 1", command=partial(self.playNewGame, choosePlayerWindow, Game.P1)).grid(row=1, column=0, padx=5)
+            Button(choosePlayerWindow, text="Player 2", command=partial(self.playNewGame, choosePlayerWindow, Game.P2)).grid(row=1, column=1, padx=5)
+
+    def playNewGame(self, choosePlayerWindow, player):
+        choosePlayerWindow.destroy()
+        self.playGame(player)
 
     def gameString(self, gameRecord):
         players = [Database.getPlayerGameUsername(gameRecord.id, Game.P1), Database.getPlayerGameUsername(gameRecord.id, Game.P2)]
@@ -85,8 +121,18 @@ class Gui(Ui):
 
     def loadGame(self, loadGameWindow, gameRecord):
         self.currGameRecord = gameRecord
+        players = [Database.getPlayerGameUsername(self.currGameRecord.id, Game.P1), Database.getPlayerGameUsername(self.currGameRecord.id, Game.P2)]
+        mainPlayerPos = None
+        for i, player in enumerate(players):
+            pos = Game.P1 if i == 0 else Game.P2
+            if player == self.player:
+                mainPlayerPos = pos
+            elif player == False:
+                self.opponent = Player.COMP if self.currGameRecord.computer else Player.GUEST
+            else:
+                self.opponent = player
         loadGameWindow.destroy()
-        self.playGame(new=False)
+        self.playGame(mainPlayerPos, new=False)
 
     def getCurrPlayerStrings(self):
         players = []
@@ -189,12 +235,12 @@ class Gui(Ui):
         for widget in self.menuFrame.winfo_children(): widget.destroy()
         if self.player == Player.GUEST:
             Label(self.menuFrame, text="Welcome to Pente!").grid(row=0, column=0, padx=10, pady=5)
-            Button(self.menuFrame, text="Play new game", command=self.playGame).grid(row=1, column=0, padx=10, pady=5)
-            Button(self.menuFrame, text="Login", command=partial(self.createLoginWindow, Player.MAIN)).grid(row=2, column=0, padx=10, pady=5)
+            Button(self.menuFrame, text="Play new game", command=self.chooseGameMode).grid(row=1, column=0, padx=10, pady=5)
+            Button(self.menuFrame, text="Login", command=partial(self.createLoginWindow, Player.MAIN, self.root)).grid(row=2, column=0, padx=10, pady=5)
             Button(self.menuFrame, text="Create Account", command=self.createAccountWindow).grid(row=3, column=0, padx=10, pady=5)
         else:
             Label(self.menuFrame, text=f"Welcome {self.player} to Pente!").grid(row=0, column=0, padx=10, pady=5)
-            Button(self.menuFrame, text="Play new game", command=self.playGame).grid(row=1, column=0, padx=10, pady=5)
+            Button(self.menuFrame, text="Play new game", command=self.chooseGameMode).grid(row=1, column=0, padx=10, pady=5)
             Button(self.menuFrame, text="Load game", command=self.createLoadGameWindow).grid(row=2, column=0, padx=10, pady=5)
             Button(self.menuFrame, text="Logout", command=self.logout).grid(row=3, column=0, padx=10, pady=5)
 
@@ -218,8 +264,8 @@ class Gui(Ui):
         self.updateHeadLabel()
         self.updateOptionFrame()
 
-    def createLoginWindow(self, player):
-        loginWindow = Toplevel(self.root)
+    def createLoginWindow(self, player, toplevel):
+        loginWindow = Toplevel(toplevel)
         loginWindow.title("Login")
         Label(loginWindow, text="Login").grid(row=0, column=0, columnspan=2, pady=10)
         Label(loginWindow, text="Username").grid(row=1, column=0, padx=5)
@@ -230,9 +276,9 @@ class Gui(Ui):
         passwordEntry.grid(row=2, column=1, padx=5)
         statusLabel = Label(loginWindow, text="")
         statusLabel.grid(row=4, column=0, columnspan=2, pady=5)
-        Button(loginWindow, text="Confirm", command=partial(self.login, loginWindow, player, usernameEntry, passwordEntry, statusLabel)).grid(row=3, column=0, columnspan=2, pady=10)
+        Button(loginWindow, text="Confirm", command=partial(self.login, loginWindow, player, usernameEntry, passwordEntry, statusLabel, toplevel)).grid(row=3, column=0, columnspan=2, pady=10)
 
-    def login(self, loginWindow, player, usernameEntry, passwordEntry, statusLabel):
+    def login(self, loginWindow, player, usernameEntry, passwordEntry, statusLabel, toplevel):
         username, password = usernameEntry.get(), passwordEntry.get()
         if Database.checkPassword(username, password):
                 if player == Player.MAIN:
@@ -240,9 +286,11 @@ class Gui(Ui):
                     self.updateMenuFrame()
                 else:
                     self.opponent = username
-                self.updateHeadLabel()
-                self.updateOptionFrame()
+                if self.playing:
+                    self.updateHeadLabel()
+                    self.updateOptionFrame()
                 loginWindow.destroy()
+                if player == Player.OPP: self.choosePlayer(toplevel, False)
         else:
             statusLabel.config(text="Incorrect username or password")
 
@@ -253,10 +301,11 @@ class Gui(Ui):
             players = self.getCurrPlayerStrings()
             self.headLabel.config(text=f"{players[0]} v.s. {players[1]}")
 
-    def playGame(self, new=True):
+    def playGame(self, mainPlayer, new=True):
         self.playing = True
-        self.currPlayers[Game.P1] = Player.MAIN
-        self.currPlayers[Game.P2] = Player.OPP
+        self.currPlayers[mainPlayer] = Player.MAIN
+        otherPlayer = Game.P1 if mainPlayer == Game.P2 else Game.P2
+        self.currPlayers[otherPlayer] = Player.OPP
         if new:
             gridsize = 19
             self.currGameRecord = GameRecord(game=Game(gridsize), computer=False)
