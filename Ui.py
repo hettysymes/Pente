@@ -51,6 +51,10 @@ class Gui(Ui):
         self.updateGameFrame()
         self.updateOptionFrame()
 
+    def getPlayer(self, player):
+        p = self.currPlayers[player]
+        return self.player if p == Player.MAIN else self.opponent
+
     def chooseGameMode(self):
         playGameWindow = Toplevel(self.root)
         playGameWindow.title("Play")
@@ -66,8 +70,10 @@ class Gui(Ui):
 
     def choosePlayer(self, playGameWindow, computer):
         playGameWindow.destroy()
-        if (not computer) and (self.player == Player.GUEST) and (self.opponent == Player.GUEST):
-            self.playGame(Game.P1)
+        if computer:
+            self.opponent = Player.COMP
+        if (self.player == Player.GUEST) and (self.opponent == Player.GUEST):
+            self.playGame(Game.P1, computer)
         else:
             choosePlayerWindow = Toplevel(self.root)
             choosePlayerWindow.title("Choose player")
@@ -80,12 +86,12 @@ class Gui(Ui):
                     player = self.player
                 txt = f"Would {player} like to be player 1 or player 2?"
             Label(choosePlayerWindow, text=txt).grid(row=0, column=0, columnspan=2, padx=10, pady=5)
-            Button(choosePlayerWindow, text="Player 1", command=partial(self.playNewGame, choosePlayerWindow, Game.P1)).grid(row=1, column=0, padx=5)
-            Button(choosePlayerWindow, text="Player 2", command=partial(self.playNewGame, choosePlayerWindow, Game.P2)).grid(row=1, column=1, padx=5)
+            Button(choosePlayerWindow, text="Player 1", command=partial(self.playNewGame, choosePlayerWindow, Game.P1, computer)).grid(row=1, column=0, padx=5)
+            Button(choosePlayerWindow, text="Player 2", command=partial(self.playNewGame, choosePlayerWindow, Game.P2, computer)).grid(row=1, column=1, padx=5)
 
-    def playNewGame(self, choosePlayerWindow, player):
+    def playNewGame(self, choosePlayerWindow, player, computer):
         choosePlayerWindow.destroy()
-        self.playGame(player)
+        self.playGame(player, computer)
 
     def gameString(self, gameRecord):
         players = [Database.getPlayerGameUsername(gameRecord.id, Game.P1), Database.getPlayerGameUsername(gameRecord.id, Game.P2)]
@@ -301,14 +307,14 @@ class Gui(Ui):
             players = self.getCurrPlayerStrings()
             self.headLabel.config(text=f"{players[0]} v.s. {players[1]}")
 
-    def playGame(self, mainPlayer, new=True):
+    def playGame(self, mainPlayer, computer=None, new=True):
         self.playing = True
         self.currPlayers[mainPlayer] = Player.MAIN
         otherPlayer = Game.P1 if mainPlayer == Game.P2 else Game.P2
         self.currPlayers[otherPlayer] = Player.OPP
         if new:
             gridsize = 19
-            self.currGameRecord = GameRecord(game=Game(gridsize), computer=False)
+            self.currGameRecord = GameRecord(game=Game(gridsize), computer=computer)
         else:
             gridsize = len(self.currGameRecord.game.board)
         self.currentBoard = [[Game.EMPTY for _ in range(gridsize)] for _ in range(gridsize)]
@@ -317,6 +323,7 @@ class Gui(Ui):
         self.createImages(squareSize)
         self.updateGameFrame(squareSize, canvasSize, gridsize)
         self.updateOptionFrame()
+        if self.getPlayer(self.currGameRecord.game.player) == Player.COMP: self.playComputer()
 
     def run(self):
         Database.createTables()
@@ -351,8 +358,13 @@ class Gui(Ui):
                 button_window = self.c.create_window(squareSize*(x+1), squareSize*(y+1), window=button)
         return buttons
 
+    def playComputer(self):
+        row, col = Ai.play(self.currGameRecord.game.board, self.currGameRecord.game.captures, self.currGameRecord.game.player)
+        self.play(row, col)
+        self.updateState()
+
     def place(self, row, col):
-        if self.currGameRecord.game.winner != Game.ONGOING: return
+        if (self.currGameRecord.game.winner != Game.ONGOING) or (self.getPlayer(self.currGameRecord.game.player) == Player.COMP): return
         try:
             Game.validateRowCol(row, col, self.currGameRecord.game.board)
         except GameError as e:
@@ -361,6 +373,8 @@ class Gui(Ui):
         else:
             self.play(row, col)
             self.updateState()
+            if self.currGameRecord.computer and self.currGameRecord.game.winner == Game.ONGOING:
+                self.root.after(1, self.playComputer)
 
     def updateState(self):
         self.p1CapLabel.config(text=f"Player 1 captured pairs: {len(self.currGameRecord.game.captures[Game.P1])}")
