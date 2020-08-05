@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from copy import deepcopy
 from Game import Game, GameError, GameRecord
 from colorama import Fore, Style
 from enum import Enum, auto
@@ -223,17 +224,27 @@ class Gui(Ui):
             self.updateOptionFrame()
             createAccountWindow.destroy()
 
+    def undo(self):
+        try:
+            self.currGameRecord.game.undo()
+        except GameError as e:
+            self.headLabel.config(text=f"Error: {e}.")
+            self.root.after(1500, self.updateHeadLabel)
+        else:
+            self.updateState()
+
     def updateOptionFrame(self):
         for widget in self.optionFrame.winfo_children(): widget.destroy()
         if self.playing:
-            Button(self.optionFrame, text="Quit game", command=self.confirmQuit).grid(row=0, column=0, padx=10, pady=5)
+            Button(self.optionFrame, text="Undo", command=self.undo).grid(row=0, column=0, padx=10, pady=5)
+            Button(self.optionFrame, text="Quit game", command=self.confirmQuit).grid(row=1, column=0, padx=10, pady=5)
             if self.player != Player.GUEST or (self.opponent not in [Player.GUEST, Player.COMP]):
                 if self.currGameRecord.id == -1:
                     command = self.createSaveGameWindow
                 else:
                     self.currGameRecord.whenSaved = datetime.now()
                     command = lambda: Database.updateGame(self.currGameRecord)
-                Button(self.optionFrame, text="Save game", command=command).grid(row=1, column=0, padx=10, pady=5)
+                Button(self.optionFrame, text="Save game", command=command).grid(row=2, column=0, padx=10, pady=5)
         else:
             Label(self.optionFrame, text="Start playing?").grid(row=0, column=0, padx=10, pady=5)
 
@@ -385,7 +396,7 @@ class Gui(Ui):
                 if self.currGameRecord.game.board[row][col] == self.currentBoard[row][col]:
                     continue
                 self.updateCell(row, col, self.currGameRecord.game.board[row][col])
-        self.currentBoard = self.currGameRecord.game.board
+        self.currentBoard = deepcopy(self.currGameRecord.game.board)
 
     def updateCell(self, row, col, piece):
         if piece == Game.EMPTY:
