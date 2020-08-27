@@ -1,7 +1,7 @@
 import socket
 import threading
 import pickle
-from enum import Enum, auto
+import time
 
 class Msg:
 
@@ -10,84 +10,95 @@ class Msg:
         self.data = data
         self.receiver = receiver
 
-class Cmd(Enum):
-    ADD = auto()
-    REM = auto()
+class Client:
 
-def client(username):
-    host = socket.gethostname()
-    port = 8080
+    def __init__(self, username):
+        self.username = username
+        self.opponent = None
+        self.s = None
 
-    s = socket.socket()
-    s.connect((host, port))
+    def makeConnection(self):
+        host = socket.gethostname()
+        port = 8080
 
-    s.send(pickle.dumps(Msg(username, Cmd.ADD)))
-    data = pickle.loads(s.recv(1024)).data
-    print(data)
+        self.s = socket.socket()
+        self.s.connect((host, port))
 
-    print("Waiting for other player...")
-    opp = pickle.loads(s.recv(1024)).data
-    print("Opponent: ", opp)
+        self.s.send(pickle.dumps(Msg(self.username, "ADD")))
+        data = self.s.recv(1024)
+    
+    def getOpponent(self):
+        self.s.send(pickle.dumps(Msg(self.username, "GETOPP")))
+        self.opponent = pickle.loads(self.s.recv(1024)).data
 
-    if username<opp:
-        data = pickle.loads(s.recv(1024)).data
-        print("Opponent move: ", data)
+    def getMove(self):
+        self.s.send(pickle.dumps(Msg(self.username, "GETMOVE")))
+        move = pickle.loads(self.s.recv(1024)).data
+        return move
 
-    while 1:
-        move = input("Move: ")
-        s.send(pickle.dumps(Msg(username, move, opp)))
-        data = pickle.loads(s.recv(1024)).data
-        print("Opponent move: ", data)
+    def makeMove(self, move):
+        self.s.send(pickle.dumps(Msg(self.username, move, self.opponent)))
 
-    s.close()
+    def closeConnection(self):
+        self.s.send(pickle.dumps(Msg(self.username, "REM")))
+        data = self.s.recv(1024)
+        self.s.close()
 
-onlineUsers = {}
+class Server:
 
-def server():
-    host = socket.gethostname()
-    port = 8080
+    def __init__(self):
+        self.onlineUsers = {}
 
-    s = socket.socket()
-    s.bind((host, port))
+    def run(self):
+        print("Server is running...")
+        host = socket.gethostname()
+        port = 8080
 
-    while 1:
-        s.listen(1)
-        c, addr = s.accept()
-        x = threading.Thread(target=handle_client, args=(c,))
-        x.start()
+        s = socket.socket()
+        s.bind((host, port))
 
-def makeConnection():
-    global onlineUsers
-    notPlaying = []
-    for username, status in onlineUsers.items():
-        if not status[1]: notPlaying.append(username)
-    while len(notPlaying) > 1:
-        u1 = notPlaying.pop()
-        u2 = notPlaying.pop()
-        onlineUsers[u1][1], onlineUsers[u2][1] = True, True
-        onlineUsers[u1][0].send(pickle.dumps(Msg("Server", u2)))
-        onlineUsers[u2][0].send(pickle.dumps(Msg("Server", u1)))
+        while 1:
+            s.listen(1)
+            c, addr = s.accept()
+            x = threading.Thread(target=self.handle_client, args=(c,))
+            x.start()
 
-def handle_client(c):
-    while True:
-        recvMsg = c.recv(1024)
-        msg = pickle.loads(recvMsg)
-        if not msg:
-            break
-        global onlineUsers
-        if msg.receiver != None:
-            onlineUsers[msg.receiver][0].send(recvMsg)
-        elif msg.data == Cmd.ADD:
-            onlineUsers[msg.sender] = [c, False]
-            c.send(pickle.dumps(Msg("Server", "Successfully added to current online players")))
-            makeConnection()
-        elif msg.data == Cmd.REM:
-            del onlineUsers[msg.sender]
-            c.send(pickle.dumps(Msg("Server", "Successfully deleted from current online players")))        
+    def getOpponent(self):
+        notPlaying = []
+        for username, status in self.onlineUsers.items():
+            if status[1] == False: notPlaying.append(username)
+        while len(notPlaying) > 1:
+            u1 = notPlaying.pop()
+            u2 = notPlaying.pop()
+            self.onlineUsers[u1][1], self.onlineUsers[u2][1] = True, True
+            self.onlineUsers[u1][0].send(pickle.dumps(Msg(None, u2)))
+            self.onlineUsers[u2][0].send(pickle.dumps(Msg(None, u1)))
 
-inp = input("Client or server (c/s)? ")
-if inp == "s":
-    server()
-else:
-    username = input("Username: ")
-    client(username)
+    def handle_client(self, c):
+        while True:
+            recvMsg = c.recv(1024)
+            msg = pickle.loads(recvMsg)
+            if not msg:
+                break
+            if msg.receiver != None:
+                self.onlineUsers[msg.receiver][2] = recvMsg
+            elif msg.data == "ADD":
+                self.onlineUsers[msg.sender] = [c, None, None]
+                c.send(pickle.dumps("ACK"))
+            elif msg.data == "GETOPP":
+                self.onlineUsers[msg.sender][1] = False
+                self.getOpponent()
+            elif msg.data == "GETMOVE":
+                message = None
+                while not message:
+                    message = self.onlineUsers[msg.sender][2]
+                    time.sleep(0.1)
+                self.onlineUsers[msg.sender][0].send(message)
+                self.onlineUsers[msg.sender][2] = None
+            elif msg.data == "REM":
+                del self.onlineUsers[msg.sender]
+                c.send(pickle.dumps("ACK"))
+
+if __name__ == "__main__":
+    server = Server()
+    server.run()

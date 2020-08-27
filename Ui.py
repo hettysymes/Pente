@@ -9,6 +9,7 @@ import Ai
 from tkinter import *
 from functools import partial
 from PIL import Image, ImageDraw
+from Server import Client, Msg
 
 class Ui (ABC):
 
@@ -793,4 +794,22 @@ class Player(Enum):
     COMP = auto()
 
 if __name__ == "__main__":
-    pass
+    username = input("Enter username: ")
+    client = Client(username)
+    print("Waiting for connection...")
+    client.makeConnection()
+    print("Connected.")
+    print("Waiting for opponent...")
+    client.getOpponent()
+    playerNo = 2 if client.opponent < client.username else 1
+    oppNo = 1 if playerNo == 2 else 2
+    print(f"Opponent: {client.opponent} (player {playerNo})")
+    print(f"You are player {oppNo}")
+    if client.opponent < client.username:
+        move = input("Enter move: ")
+        client.makeMove(move)
+    while 1:
+        move = client.getMove()
+        print(f"{client.opponent} played: ", move)
+        move = input("Enter move: ")
+        client.makeMove(move)
