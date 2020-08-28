@@ -2,6 +2,8 @@ import socket
 import threading
 import pickle
 import time
+from Game import Game
+import random
 
 class Msg:
 
@@ -15,6 +17,7 @@ class Client:
     def __init__(self, username):
         self.username = username
         self.opponent = None
+        self.playerNo = None
         self.s = None
 
     def makeConnection(self):
@@ -29,7 +32,7 @@ class Client:
     
     def getOpponent(self):
         self.s.send(pickle.dumps(Msg(self.username, "GETOPP")))
-        self.opponent = pickle.loads(self.s.recv(1024)).data
+        self.opponent, self.playerNo = pickle.loads(self.s.recv(1024)).data
 
     def getMove(self):
         self.s.send(pickle.dumps(Msg(self.username, "GETMOVE")))
@@ -71,8 +74,10 @@ class Server:
             u1 = notPlaying.pop()
             u2 = notPlaying.pop()
             self.onlineUsers[u1][1], self.onlineUsers[u2][1] = True, True
-            self.onlineUsers[u1][0].send(pickle.dumps(Msg(None, u2)))
-            self.onlineUsers[u2][0].send(pickle.dumps(Msg(None, u1)))
+            playerIndex = random.randint(0, 1)
+            p1, p2 = [Game.P1, Game.P2][playerIndex], [Game.P1, Game.P2][not playerIndex]
+            self.onlineUsers[u1][0].send(pickle.dumps(Msg(None, (u2, p1))))
+            self.onlineUsers[u2][0].send(pickle.dumps(Msg(None, (u1, p2))))
 
     def handle_client(self, c):
         while True:

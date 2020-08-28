@@ -161,12 +161,12 @@ class MoveStack:
 
 class GameRecord:
 
-    def __init__(self, id=-1, name=-1, whenSaved=-1, game=-1, computer=-1):
+    def __init__(self, id=-1, name=-1, whenSaved=-1, game=-1, mode=-1):
         self.id = id
         self.name = name
         self.whenSaved = whenSaved
         self.game = game
-        self.computer = computer
+        self.mode = mode
 
 if __name__ == "__main__":
     pass

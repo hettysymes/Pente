@@ -62,24 +62,24 @@ class Gui(Ui):
         playGameWindow.title("Play")
         Label(playGameWindow, text="Choose a game mode").grid(row=0, column=0, padx=10, pady=5)
         Button(playGameWindow, text="Player v.s. Player", command=partial(self.confirmOppLogin, playGameWindow)).grid(row=1, column=0, padx=5)
-        Button(playGameWindow, text="Player v.s. Computer", command=partial(self.choosePlayer, playGameWindow, True)).grid(row=2, column=0, padx=5)     
+        Button(playGameWindow, text="Player v.s. Computer", command=partial(self.choosePlayer, playGameWindow, "COMP")).grid(row=2, column=0, padx=5)     
 
     def confirmOppLogin(self, playGameWindow):
         for widget in playGameWindow.winfo_children(): widget.destroy()
         Label(playGameWindow, text="Would the other player like to login?").grid(row=0, column=0, columnspan=2, padx=10, pady=5)
         Button(playGameWindow, text="Yes", command=partial(self.createLoginWindow, Player.OPP, playGameWindow)).grid(row=1, column=0, padx=5)
-        Button(playGameWindow, text="No", command=partial(self.choosePlayer, playGameWindow, False)).grid(row=1, column=1, padx=5)
+        Button(playGameWindow, text="No", command=partial(self.choosePlayer, playGameWindow, "PVP")).grid(row=1, column=1, padx=5)
 
-    def choosePlayer(self, playGameWindow, computer):
+    def choosePlayer(self, playGameWindow, mode):
         playGameWindow.destroy()
-        if computer:
+        if mode == "COMP":
             self.opponent = Player.COMP
         if (self.player == Player.GUEST) and (self.opponent == Player.GUEST):
-            self.playGame(Game.P1, computer)
+            self.playGame(Game.P1, mode)
         else:
             choosePlayerWindow = Toplevel(self.root)
             choosePlayerWindow.title("Choose player")
-            if computer:
+            if mode == "COMP":
                 txt = "Would you like to be player 1 or player 2?"
             else:
                 if self.player == Player.GUEST:
@@ -88,18 +88,18 @@ class Gui(Ui):
                     player = self.player
                 txt = f"Would {player} like to be player 1 or player 2?"
             Label(choosePlayerWindow, text=txt).grid(row=0, column=0, columnspan=2, padx=10, pady=5)
-            Button(choosePlayerWindow, text="Player 1", command=partial(self.playNewGame, choosePlayerWindow, Game.P1, computer)).grid(row=1, column=0, padx=5)
-            Button(choosePlayerWindow, text="Player 2", command=partial(self.playNewGame, choosePlayerWindow, Game.P2, computer)).grid(row=1, column=1, padx=5)
+            Button(choosePlayerWindow, text="Player 1", command=partial(self.playNewGame, choosePlayerWindow, Game.P1, mode)).grid(row=1, column=0, padx=5)
+            Button(choosePlayerWindow, text="Player 2", command=partial(self.playNewGame, choosePlayerWindow, Game.P2, mode)).grid(row=1, column=1, padx=5)
 
-    def playNewGame(self, choosePlayerWindow, player, computer):
+    def playNewGame(self, choosePlayerWindow, player, mode):
         choosePlayerWindow.destroy()
-        self.playGame(player, computer)
+        self.playGame(player, mode)
 
     def gameString(self, gameRecord):
         players = [Database.getPlayerGameUsername(gameRecord.id, Game.P1), Database.getPlayerGameUsername(gameRecord.id, Game.P2)]
         for i in range(2):
             if players[i] == False:
-                if gameRecord.computer:
+                if gameRecord.mode == "COMP":
                     players[i] = "Computer"
                 else:
                     players[i] = "Guest"
@@ -136,7 +136,7 @@ class Gui(Ui):
             if player == self.player:
                 mainPlayerPos = pos
             elif player == False:
-                self.opponent = Player.COMP if self.currGameRecord.computer else Player.GUEST
+                self.opponent = Player.COMP if self.currGameRecord.mode == "COMP" else Player.GUEST
             else:
                 self.opponent = player
         loadGameWindow.destroy()
@@ -319,14 +319,14 @@ class Gui(Ui):
             players = self.getCurrPlayerStrings()
             self.headLabel.config(text=f"{players[0]} v.s. {players[1]}")
 
-    def playGame(self, mainPlayer, computer=None, new=True):
+    def playGame(self, mainPlayer, mode="PVP", new=True):
         self.playing = True
         self.currPlayers[mainPlayer] = Player.MAIN
         otherPlayer = Game.P1 if mainPlayer == Game.P2 else Game.P2
         self.currPlayers[otherPlayer] = Player.OPP
         if new:
             gridsize = 19
-            self.currGameRecord = GameRecord(game=Game(gridsize), computer=computer)
+            self.currGameRecord = GameRecord(game=Game(gridsize), mode=mode)
         else:
             gridsize = len(self.currGameRecord.game.board)
         self.currentBoard = [[Game.EMPTY for _ in range(gridsize)] for _ in range(gridsize)]
@@ -385,7 +385,7 @@ class Gui(Ui):
         else:
             self.play(row, col)
             self.updateState()
-            if self.currGameRecord.computer and self.currGameRecord.game.winner == Game.ONGOING:
+            if self.currGameRecord.mode == "COMP" and self.currGameRecord.game.winner == Game.ONGOING:
                 self.root.after(1, self.playComputer)
 
     def updateState(self):
@@ -497,7 +497,8 @@ class Terminal(Ui):
         2. Player v.s. Computer
         """
         print(menu)
-        return not (self.getChoice(1, 2)%2)
+        c = self.getChoice(1, 2)
+        return "PVP" if c == 1 else "COMP"
 
     def choosePlayer(self):
         if self.player == Player.GUEST and self.opponent == Player.GUEST:
@@ -528,9 +529,9 @@ class Terminal(Ui):
                 self.deleteGame(games)
 
     def playGame(self):
-        compMode = self.chooseMode()
-        self.currGameRecord = GameRecord(game=Game(19), computer=compMode)
-        if not compMode:
+        mode = self.chooseMode()
+        self.currGameRecord = GameRecord(game=Game(19), mode=mode)
+        if mode == "PVP":
             self.opponent = Player.GUEST
             menu = """
             The other player will:
@@ -670,7 +671,7 @@ class Terminal(Ui):
         players = [Database.getPlayerGameUsername(gameRecord.id, Game.P1), Database.getPlayerGameUsername(gameRecord.id, Game.P2)]
         for i in range(2):
             if players[i] == False:
-                if gameRecord.computer:
+                if gameRecord.mode == "COMP":
                     players[i] = "computer"
                 else:
                     players[i] = "guest"
@@ -801,14 +802,15 @@ if __name__ == "__main__":
     print("Connected.")
     print("Waiting for opponent...")
     client.getOpponent()
-    playerNo = 2 if client.opponent < client.username else 1
+    playerNo = 1 if client.playerNo == Game.P1 else 2
     oppNo = 1 if playerNo == 2 else 2
-    print(f"Opponent: {client.opponent} (player {playerNo})")
-    print(f"You are player {oppNo}")
-    if client.opponent < client.username:
+    print(f"Opponent: {client.opponent} (player {oppNo})")
+    print(f"You are player {playerNo}")
+    if client.playerNo == Game.P1:
         move = input("Enter move: ")
         client.makeMove(move)
     while 1:
+        print(f"Waiting for {client.opponent} to play...")
         move = client.getMove()
         print(f"{client.opponent} played: ", move)
         move = input("Enter move: ")
