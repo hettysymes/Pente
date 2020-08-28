@@ -82,9 +82,9 @@ class Server:
     def handle_client(self, c):
         while True:
             recvMsg = c.recv(1024)
-            msg = pickle.loads(recvMsg)
-            if not msg:
+            if not recvMsg:
                 break
+            msg = pickle.loads(recvMsg)
             if msg.receiver != None:
                 self.onlineUsers[msg.receiver][2] = recvMsg
             elif msg.data == "ADD":

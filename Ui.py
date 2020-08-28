@@ -491,14 +491,24 @@ class Terminal(Ui):
         self.displayMenu()
 
     def chooseMode(self):
-        menu = """
+        memberMenu = """
         Please choose a game mode:
-        1. Player v.s. Player
-        2. Player v.s. Computer
+        1. Player v.s. Computer
+        2. Player v.s. Player
+        3. Player v.s. Player (LAN)
         """
-        print(menu)
-        c = self.getChoice(1, 2)
-        return "PVP" if c == 1 else "COMP"
+        guestMenu = """
+        Please choose a game mode:
+        1. Player v.s. Computer
+        2. Player v.s. Player
+        """
+        if self.player == Player.GUEST:
+            print(guestMenu)
+            c = self.getChoice(1, 2)
+        else:
+            print(memberMenu)
+            c = self.getChoice(1, 3)
+        return ["COMP", "PVP", "LAN"][c-1]
 
     def choosePlayer(self):
         if self.player == Player.GUEST and self.opponent == Player.GUEST:
@@ -531,24 +541,28 @@ class Terminal(Ui):
     def playGame(self):
         mode = self.chooseMode()
         self.currGameRecord = GameRecord(game=Game(19), mode=mode)
-        if mode == "PVP":
-            self.opponent = Player.GUEST
-            menu = """
-            The other player will:
-            1. Play as a guest
-            2. Login
-            """
-            print(menu)
-            if self.getChoice(1, 2) == 2:
-                self.login(Player.OPP)
+        client = None
+        if mode == "LAN":
+            client = self.connectLan()
+            player = client.playerNo
         else:
-            self.opponent = Player.COMP
-        player = self.choosePlayer()
+            if mode == "PVP":
+                self.opponent = Player.GUEST
+                menu = """
+                The other player will:
+                1. Play as a guest
+                2. Login
+                """
+                print(menu)
+                if self.getChoice(1, 2) == 2:
+                    self.login(Player.OPP)
+            elif mode == "COMP":
+                self.opponent = Player.COMP
+            player = self.choosePlayer()
         otherPlayer = Game.P2 if player == Game.P1 else Game.P1
         self.currPlayers[player] = self.player
         self.currPlayers[otherPlayer] = self.opponent
-        print("Enter moves as the row immediately followed by the column, e.g. 3A or 3a.")
-        self.play()
+        self.play(client)
 
     def displayMenu(self):
         guestMethods = {1: self.playGame, 2: lambda: self.login(Player.MAIN), 3: self.createAccount, 4: quit}
@@ -767,7 +781,7 @@ class Terminal(Ui):
             else:
                 return True
 
-    def play(self):
+    def play(self, client=None):
         game = self.currGameRecord.game
         print("\nTo enter a move, enter the row followed by the column e.g. 1A or 1a.\n")
         while game.winner == Game.ONGOING:
@@ -777,6 +791,14 @@ class Terminal(Ui):
             print(playerStr)
             if self.currPlayers[game.player] == Player.COMP:
                 row, col = Ai.play(game.board, game.captures, game.player)
+            elif self.currGameRecord.mode == "LAN":
+                if self.currPlayers[game.player] == self.player:
+                    row, col = self.getRowCol(game.board)
+                    client.makeMove((row, col))
+                else:
+                    print(f"Waiting for {client.opponent} to play...")
+                    row, col = client.getMove()
+                    print(f"{client.opponent} played: {row+1}{chr(col+65)}")
             else:
                 row, col = self.getRowCol(game.board)
             game.play(row, col)
@@ -787,31 +809,24 @@ class Terminal(Ui):
             print("Player 2 has won!")
         else:
             print("It is a draw.")
+        if self.currGameRecord.mode == "LAN": client.closeConnection()
+
+    def connectLan(self):
+        client = Client(self.player)
+        print("Waiting for connection...")
+        client.makeConnection()
+        print("Connected.")
+        print("Waiting for opponent...")
+        client.getOpponent()
+        self.opponent = client.opponent
+        playerNo = 1 if client.playerNo == Game.P1 else 2
+        oppNo = 1 if playerNo == 2 else 2
+        print(f"Opponent: {self.opponent} (player {oppNo})")
+        print(f"You are player {playerNo}")
+        return client
 
 class Player(Enum):
     MAIN = auto()
     OPP = auto()
     GUEST = auto()
     COMP = auto()
-
-if __name__ == "__main__":
-    username = input("Enter username: ")
-    client = Client(username)
-    print("Waiting for connection...")
-    client.makeConnection()
-    print("Connected.")
-    print("Waiting for opponent...")
-    client.getOpponent()
-    playerNo = 1 if client.playerNo == Game.P1 else 2
-    oppNo = 1 if playerNo == 2 else 2
-    print(f"Opponent: {client.opponent} (player {oppNo})")
-    print(f"You are player {playerNo}")
-    if client.playerNo == Game.P1:
-        move = input("Enter move: ")
-        client.makeMove(move)
-    while 1:
-        print(f"Waiting for {client.opponent} to play...")
-        move = client.getMove()
-        print(f"{client.opponent} played: ", move)
-        move = input("Enter move: ")
-        client.makeMove(move)
