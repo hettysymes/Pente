@@ -15,10 +15,38 @@ class Msg:
 class Client:
 
     def __init__(self, username):
-        self.username = username
-        self.opponent = None
-        self.playerNo = None
-        self.s = None
+        self._username = username
+        self._opponent = None
+        self._playerNo = None
+        self._s = None
+
+    @property
+    def username(self):
+        return self._username
+
+    @property
+    def opponent(self):
+        return self._opponent
+
+    @opponent.setter
+    def opponent(self, opponent):
+        self._opponent = opponent
+
+    @property
+    def playerNo(self):
+        return self._playerNo
+
+    @playerNo.setter
+    def playerNo(self, playerNo):
+        self._playerNo = playerNo
+
+    @property
+    def s(self):
+        return self._s
+
+    @s.setter
+    def s(self, s):
+        self._s = s
 
     def makeConnection(self):
         host = socket.gethostname()
@@ -50,7 +78,15 @@ class Client:
 class Server:
 
     def __init__(self):
-        self.onlineUsers = {}
+        self._onlineUsers = {}
+
+    @property
+    def onlineUsers(self):
+        return self._onlineUsers
+
+    @onlineUsers.setter
+    def onlineUsers(self, onlineUsers):
+        self._onlineUsers = onlineUsers
 
     def run(self):
         print("Server is running...")

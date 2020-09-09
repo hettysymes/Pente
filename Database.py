@@ -7,22 +7,22 @@ from Game import Game, GameRecord
 class HashTable:
 
     def __init__(self):
-        self.__SIZE = 50
-        self.__hashTable = [[] for _ in range(self.__SIZE)]
+        self._SIZE = 50
+        self._hashTable = [[] for _ in range(self._SIZE)]
 
     def __hashFunction(self, key):
         total = 0
         for char in key:
             total += 3*ord(char)
-        return total % self.__SIZE
+        return total % self._SIZE
 
     def addToTable(self, username, password):
         passwordHash = self.__hashFunction(password)
-        self.__hashTable[passwordHash].append(username)
+        self._hashTable[passwordHash].append(username)
 
     def isInTable(self, username, password):
         passwordHash = self.__hashFunction(password)
-        return username in self.__hashTable[passwordHash]
+        return username in self._hashTable[passwordHash]
 
 def connect():
     conn = sqlite3.connect('PenteDatabase.db')

@@ -20,39 +20,164 @@ class Ui (ABC):
 class Gui(Ui):
 
     def __init__(self):
-        self.MAX_CANVAS_SIZE = 730
-        self.player = Player.GUEST
-        self.opponent = Player.GUEST
-        self.currGameRecord = None
-        self.currPlayers = {Game.P1: Player.MAIN, Game.P2: Player.OPP}
-        self.currentBoard = None
-        self.playing = False
+        self._MAX_CANVAS_SIZE = 730
+        self._player = Player.GUEST
+        self._opponent = Player.GUEST
+        self._currGameRecord = None
+        self._currPlayers = {Game.P1: Player.MAIN, Game.P2: Player.OPP}
+        self._currentBoard = None
+        self._playing = False
 
-        self.root = Tk()
-        self.root.title("Pente")
+        self._root = Tk()
+        self._root.title("Pente")
 
-        self.menuFrame = Frame(self.root)
-        self.menuFrame.grid(row=0, column=0, sticky="EW")
+        self._menuFrame = Frame(self.root)
+        self._menuFrame.grid(row=0, column=0, sticky="EW")
 
-        self.gameFrame = Frame(self.root)
-        self.gameFrame.grid(row=0, column=1, sticky="EW")
+        self._gameFrame = Frame(self.root)
+        self._gameFrame.grid(row=0, column=1, sticky="EW")
+        self._buttons = []
 
-        self.optionFrame = Frame(self.root)
-        self.optionFrame.grid(row=0, column=2, sticky="EW")
+        self._optionFrame = Frame(self.root)
+        self._optionFrame.grid(row=0, column=2, sticky="EW")
 
-        self.headLabel = Label(self.gameFrame, bg="white", fg="black", font=("Helvetica", 18))
-        self.headLabel.grid(row=0, column=0, sticky="NESW")
+        self._headLabel = Label(self.gameFrame, bg="white", fg="black", font=("Helvetica", 18))
+        self._headLabel.grid(row=0, column=0, sticky="NESW")
 
-        self.c = Canvas()
-        self.p1CapLabel = Label(self.gameFrame, relief="ridge", font=("Helvetica", 18))
-        self.p1CapLabel.grid(row=1, column=0, sticky="NESW")
-        self.p2CapLabel = Label(self.gameFrame, relief="ridge", font=("Helvetica", 18))
-        self.p2CapLabel.grid(row=3, column=0, sticky="NESW")
+        self._c = Canvas()
+        self._p1CapLabel = Label(self.gameFrame, relief="ridge", font=("Helvetica", 18))
+        self._p1CapLabel.grid(row=1, column=0, sticky="NESW")
+        self._p2CapLabel = Label(self.gameFrame, relief="ridge", font=("Helvetica", 18))
+        self._p2CapLabel.grid(row=3, column=0, sticky="NESW")
 
         self.updateMenuFrame()
         self.updateGameFrame()
         self.updateOptionFrame()
 
+    @property
+    def MAX_CANVAS_SIZE(self):
+        return self._MAX_CANVAS_SIZE
+
+    @property
+    def player(self):
+        return self._player
+
+    @player.setter
+    def player(self, player):
+        self._player = player
+
+    @property
+    def opponent(self):
+        return self._opponent
+
+    @opponent.setter
+    def opponent(self, opponent):
+        self._opponent = opponent
+
+    @property
+    def currGameRecord(self):
+        return self._currGameRecord
+
+    @currGameRecord.setter
+    def currGameRecord(self, currGameRecord):
+        self._currGameRecord = currGameRecord
+
+    @property
+    def currPlayers(self):
+        return self._currPlayers
+
+    @currPlayers.setter
+    def currPlayers(self, currPlayers):
+        self._currPlayers = currPlayers
+
+    @property
+    def currentBoard(self):
+        return self._currentBoard
+
+    @currentBoard.setter
+    def currentBoard(self, currentBoard):
+        self._currentBoard = currentBoard
+
+    @property
+    def playing(self):
+        return self._playing
+
+    @playing.setter
+    def playing(self, playing):
+        self._playing = playing
+
+    @property
+    def root(self):
+        return self._root
+
+    @root.setter
+    def root(self, root):
+        self._root = root
+
+    @property
+    def menuFrame(self):
+        return self._menuFrame
+
+    @menuFrame.setter
+    def menuFrame(self, menuFrame):
+        self._menuFrame = menuFrame
+
+    @property
+    def gameFrame(self):
+        return self._gameFrame
+
+    @gameFrame.setter
+    def gameFrame(self, gameFrame):
+        self._gameFrame = gameFrame
+
+    @property
+    def buttons(self):
+        return self._buttons
+
+    @buttons.setter
+    def buttons(self, buttons):
+        self._buttons = buttons
+
+    @property
+    def optionFrame(self):
+        return self._optionFrame
+
+    @optionFrame.setter
+    def optionFrame(self, optionFrame):
+        self._optionFrame = optionFrame
+
+    @property
+    def headLabel(self):
+        return self._headLabel
+
+    @headLabel.setter
+    def headLabel(self, headLabel):
+        self._headLabel = headLabel
+
+    @property
+    def c(self):
+        return self._c
+
+    @c.setter
+    def c(self, c):
+        self._c = c
+
+    @property
+    def p1CapLabel(self):
+        return self._p1CapLabel
+
+    @p1CapLabel.setter
+    def p1CapLabel(self, p1CapLabel):
+        self._p1CapLabel = p1CapLabel
+    
+    @property
+    def p2CapLabel(self):
+        return self._p2CapLabel
+
+    @p2CapLabel.setter
+    def p2CapLabel(self, p2CapLabel):
+        self._p2CapLabel = p2CapLabel
+    
     def getPlayer(self, player):
         p = self.currPlayers[player]
         return self.player if p == Player.MAIN else self.opponent
@@ -453,38 +578,38 @@ class Gui(Ui):
 class Terminal(Ui):
 
     def __init__(self):
-        self.__player = Player.GUEST
-        self.__opponent = Player.GUEST
-        self.__currGameRecord = None
-        self.__currPlayers = {Game.P1: Player.GUEST, Game.P2: Player.GUEST}
+        self._player = Player.GUEST
+        self._opponent = Player.GUEST
+        self._currGameRecord = None
+        self._currPlayers = {Game.P1: Player.GUEST, Game.P2: Player.GUEST}
 
     @property
     def player(self):
-        return self.__player
+        return self._player
 
     @player.setter
     def player(self, player):
-        self.__player = player
+        self._player = player
 
     @property
     def opponent(self):
-        return self.__opponent
+        return self._opponent
 
     @opponent.setter
     def opponent(self, opponent):
-        self.__opponent = opponent
+        self._opponent = opponent
 
     @property
     def currGameRecord(self):
-        return self.__currGameRecord
+        return self._currGameRecord
     
     @currGameRecord.setter
     def currGameRecord(self, currGameRecord):
-        self.__currGameRecord = currGameRecord
+        self._currGameRecord = currGameRecord
 
     @property
     def currPlayers(self):
-        return self.__currPlayers
+        return self._currPlayers
 
     def run(self):
         Database.createTables()
@@ -731,11 +856,11 @@ class Terminal(Ui):
     def saveGame(self, game):
         self.currGameRecord.whenSaved, self.currGameRecord.game = datetime.now(), game
         if self.currGameRecord.id != -1:
-            Database.updateGame(self.__currGameRecord)
+            Database.updateGame(self.currGameRecord)
         else:
             name = input("Enter name to save game as: ")
             self.currGameRecord.name = name
-            Database.saveGame(self.currPlayers[Game.P1], self.currPlayers[Game.P2], self.__currGameRecord)
+            Database.saveGame(self.currPlayers[Game.P1], self.currPlayers[Game.P2], self.currGameRecord)
         print("Game saved successfully.")
 
     def loadGame(self):
@@ -748,7 +873,7 @@ class Terminal(Ui):
                 print(f"{i+1}. {self.gameString(gameRecord)}")
             print("Select a game (e.g. 1, 2...)")
             inp = self.getChoice(1, i+1)
-            self.__currGameRecord = games[inp-1]
+            self.currGameRecord = games[inp-1]
             self.play()
 
     def deleteGame(self, games):

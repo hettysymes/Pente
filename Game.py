@@ -13,47 +13,47 @@ class Game:
     ONGOING = "ONGOING"
 
     def __init__(self, boardsize):
-        self.__board = [[Game.EMPTY for _ in range(boardsize)] for _ in range(boardsize)]
-        self.__captures = {Game.P1: [], Game.P2: []}
-        self.__winner = Game.ONGOING
-        self.__player = Game.P1
-        self.__moveStack = MoveStack()
+        self._board = [[Game.EMPTY for _ in range(boardsize)] for _ in range(boardsize)]
+        self._captures = {Game.P1: [], Game.P2: []}
+        self._winner = Game.ONGOING
+        self._player = Game.P1
+        self._moveStack = MoveStack()
 
     @property
     def board(self):
-        return self.__board
+        return self._board
 
     @board.setter
     def board(self, board):
-        self.__board = board
+        self._board = board
 
     @property
     def captures(self):
-        return self.__captures
+        return self._captures
 
     @captures.setter
     def captures(self, captures):
-        self.__captures = captures
+        self._captures = captures
 
     @property
     def winner(self):
-        return self.__winner
+        return self._winner
 
     @winner.setter
     def winner(self, winner):
-        self.__winner = winner
+        self._winner = winner
 
     @property
     def player(self):
-        return self.__player
+        return self._player
     
     @player.setter
     def player(self, player):
-        self.__player = player
+        self._player = player
 
     @property
     def moveStack(self):
-        return self.__moveStack
+        return self._moveStack
 
     @staticmethod
     def inRow(board, row, col, pattern):
@@ -141,23 +141,23 @@ class Game:
 class MoveStack:
 
     def __init__(self):
-        self.__stack = []
+        self._stack = []
 
     def isEmpty(self):
-        return self.__stack == []
+        return self._stack == []
 
     def push(self, captures, row, col):
-        self.__stack.append((captures, row, col))
+        self._stack.append((captures, row, col))
 
     def pop(self):
         if self.isEmpty():
             raise GameError("There have been no previous moves")
-        return self.__stack.pop()
+        return self._stack.pop()
     
     def peek(self):
         if self.isEmpty():
             raise GameError("There have been no previous moves")
-        return self.__stack[-1]
+        return self._stack[-1]
 
 class GameRecord:
 
