@@ -3,77 +3,8 @@ import threading
 import pickle
 import time
 from Game import Game
+from Datatypes import Msg, Cmd
 import random
-
-class Msg:
-
-    def __init__(self, sender, data=None, receiver=None):
-        self.sender = sender
-        self.data = data
-        self.receiver = receiver
-
-class Client:
-
-    def __init__(self, username):
-        self._username = username
-        self._opponent = None
-        self._playerNo = None
-        self._s = None
-
-    @property
-    def username(self):
-        return self._username
-
-    @property
-    def opponent(self):
-        return self._opponent
-
-    @opponent.setter
-    def opponent(self, opponent):
-        self._opponent = opponent
-
-    @property
-    def playerNo(self):
-        return self._playerNo
-
-    @playerNo.setter
-    def playerNo(self, playerNo):
-        self._playerNo = playerNo
-
-    @property
-    def s(self):
-        return self._s
-
-    @s.setter
-    def s(self, s):
-        self._s = s
-
-    def makeConnection(self):
-        host = socket.gethostname()
-        port = 8080
-
-        self.s = socket.socket()
-        self.s.connect((host, port))
-
-        self.s.send(pickle.dumps(Msg(self.username, "ADD")))
-        data = self.s.recv(1024)
-    
-    def getOpponent(self):
-        self.s.send(pickle.dumps(Msg(self.username, "GETOPP")))
-        self.opponent, self.playerNo = pickle.loads(self.s.recv(1024)).data
-
-    def getMove(self):
-        self.s.send(pickle.dumps(Msg(self.username, "GETMOVE")))
-        move = pickle.loads(self.s.recv(1024)).data
-        return move
-
-    def makeMove(self, move):
-        self.s.send(pickle.dumps(Msg(self.username, move, self.opponent)))
-
-    def closeConnection(self):
-        self.s.send(pickle.dumps(Msg(self.username, "REM")))
-        data = self.s.recv(1024)
-        self.s.close()
 
 class Server:
 
@@ -123,20 +54,20 @@ class Server:
             msg = pickle.loads(recvMsg)
             if msg.receiver != None:
                 self.onlineUsers[msg.receiver][2] = recvMsg
-            elif msg.data == "ADD":
+            elif msg.data == Cmd.ADD:
                 self.onlineUsers[msg.sender] = [c, None, None]
                 c.send(pickle.dumps("ACK"))
-            elif msg.data == "GETOPP":
+            elif msg.data == Cmd.GETOPP:
                 self.onlineUsers[msg.sender][1] = False
                 self.getOpponent()
-            elif msg.data == "GETMOVE":
+            elif msg.data == Cmd.GETMOVE:
                 message = None
                 while not message:
                     message = self.onlineUsers[msg.sender][2]
                     time.sleep(0.1)
                 self.onlineUsers[msg.sender][0].send(message)
                 self.onlineUsers[msg.sender][2] = None
-            elif msg.data == "REM":
+            elif msg.data == Cmd.REM:
                 del self.onlineUsers[msg.sender]
                 c.send(pickle.dumps("ACK"))
 

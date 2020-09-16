@@ -1,6 +1,5 @@
 from Ui import Gui, Terminal
 from sys import argv
-from Server import Msg
 
 def usage():
     print(f"""

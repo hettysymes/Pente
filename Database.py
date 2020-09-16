@@ -2,7 +2,8 @@ import sqlite3
 import pickle
 from datetime import datetime
 import Ui
-from Game import Game, GameRecord
+from Game import Game
+from Datatypes import GameRecord
 
 class HashTable:
 

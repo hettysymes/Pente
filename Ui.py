@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from copy import deepcopy
-from Game import Game, GameError, GameRecord
+from Game import Game, GameError
+from Datatypes import GameRecord
 from colorama import Fore, Style
 from enum import Enum, auto
 from datetime import datetime
@@ -9,7 +10,7 @@ import Ai
 from tkinter import *
 from functools import partial
 from PIL import Image, ImageDraw
-from Server import Client, Msg
+from Client import Client
 
 class Ui (ABC):
 
