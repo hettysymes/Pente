@@ -11,6 +11,18 @@ from tkinter import *
 from functools import partial
 from PIL import Image, ImageDraw
 from Client import Client
+import threading
+
+class Player(Enum):
+    MAIN = auto()
+    OPP = auto()
+    GUEST = auto()
+    COMP = auto()
+
+class Mode:
+    PVP = "PVP"
+    COMP = "COMP"
+    LAN = "LAN"
 
 class Ui (ABC):
 
@@ -197,7 +209,7 @@ class Gui(Ui):
         playGameWindow.title("Play")
         Label(playGameWindow, text="Choose a game mode").grid(row=0, column=0, padx=10, pady=5)
         Button(playGameWindow, text="Player v.s. Player", command=partial(self.confirmOppLogin, playGameWindow)).grid(row=1, column=0, padx=5)
-        Button(playGameWindow, text="Player v.s. Computer", command=partial(self.choosePlayer, playGameWindow, "COMP")).grid(row=2, column=0, padx=5)     
+        Button(playGameWindow, text="Player v.s. Computer", command=partial(self.choosePlayer, playGameWindow, Mode.COMP)).grid(row=2, column=0, padx=5)     
         if self.player != Player.GUEST:
             Button(playGameWindow, text="Player v.s. Player (LAN)", command=partial(self.connectLan, playGameWindow)).grid(row=3, column=0, padx=5)
 
@@ -205,18 +217,18 @@ class Gui(Ui):
         for widget in playGameWindow.winfo_children(): widget.destroy()
         Label(playGameWindow, text="Would the other player like to login?").grid(row=0, column=0, columnspan=2, padx=10, pady=5)
         Button(playGameWindow, text="Yes", command=partial(self.createLoginWindow, Player.OPP, playGameWindow)).grid(row=1, column=0, padx=5)
-        Button(playGameWindow, text="No", command=partial(self.choosePlayer, playGameWindow, "PVP")).grid(row=1, column=1, padx=5)
+        Button(playGameWindow, text="No", command=partial(self.choosePlayer, playGameWindow, Mode.PVP)).grid(row=1, column=1, padx=5)
 
     def choosePlayer(self, playGameWindow, mode):
         playGameWindow.destroy()
-        if mode == "COMP":
+        if mode == Mode.COMP:
             self.opponent = Player.COMP
         if (self.player == Player.GUEST) and (self.opponent == Player.GUEST):
             self.playGame(Game.P1, mode)
         else:
             choosePlayerWindow = Toplevel(self.root)
             choosePlayerWindow.title("Choose player")
-            if mode == "COMP":
+            if mode == Mode.COMP:
                 txt = "Would you like to be player 1 or player 2?"
             else:
                 if self.player == Player.GUEST:
@@ -236,7 +248,7 @@ class Gui(Ui):
         players = [Database.getPlayerGameUsername(gameRecord.id, Game.P1), Database.getPlayerGameUsername(gameRecord.id, Game.P2)]
         for i in range(2):
             if players[i] == False:
-                if gameRecord.mode == "COMP":
+                if gameRecord.mode == Mode.COMP:
                     players[i] = "Computer"
                 else:
                     players[i] = "Guest"
@@ -273,7 +285,7 @@ class Gui(Ui):
             if player == self.player:
                 mainPlayerPos = pos
             elif player == False:
-                self.opponent = Player.COMP if self.currGameRecord.mode == "COMP" else Player.GUEST
+                self.opponent = Player.COMP if self.currGameRecord.mode == Mode.COMP else Player.GUEST
             else:
                 self.opponent = player
         loadGameWindow.destroy()
@@ -456,7 +468,7 @@ class Gui(Ui):
             players = self.getCurrPlayerStrings()
             self.headLabel.config(text=f"{players[0]} v.s. {players[1]}")
 
-    def playGame(self, mainPlayer, mode="PVP", new=True):
+    def playGame(self, mainPlayer, mode=Mode.PVP, new=True):
         self.playing = True
         self.currPlayers[mainPlayer] = Player.MAIN
         otherPlayer = Game.P1 if mainPlayer == Game.P2 else Game.P2
@@ -474,10 +486,9 @@ class Gui(Ui):
         self.updateOptionFrame()
         if self.getPlayer(self.currGameRecord.game.player) == Player.COMP:
             self.playComputer()
-        elif self.currGameRecord.mode == "LAN" and self.currPlayers[self.currGameRecord.game.player] == Player.OPP:
-            row, col = self.client.getMove()
-            self.play(row, col)
-            self.updateState()
+        elif self.currGameRecord.mode == Mode.LAN and self.currPlayers[self.currGameRecord.game.player] == Player.OPP:
+            x = threading.Thread(target=self.lanGetDisplayMove)
+            x.start()
 
     def run(self):
         Database.createTables()
@@ -518,7 +529,7 @@ class Gui(Ui):
         self.updateState()             
 
     def place(self, row, col):
-        if (self.currGameRecord.game.winner != Game.ONGOING) or (self.getPlayer(self.currGameRecord.game.player) == Player.COMP): return
+        if (self.currGameRecord.game.winner != Game.ONGOING) or (self.currGameRecord.mode != Mode.PVP and self.currPlayers[self.currGameRecord.game.player] == Player.OPP): return
         try:
             Game.validateRowCol(row, col, self.currGameRecord.game.board)
         except GameError as e:
@@ -527,16 +538,17 @@ class Gui(Ui):
         else:
             self.play(row, col)
             self.updateState()
-            if self.currGameRecord.mode == "COMP" and self.currGameRecord.game.winner == Game.ONGOING:
+            if self.currGameRecord.mode == Mode.COMP and self.currGameRecord.game.winner == Game.ONGOING:
                 self.root.after(1, self.playComputer)
-            elif self.currGameRecord.mode == "LAN" and self.currPlayers[self.currGameRecord.game.player] == Player.OPP:
-                row, col = self.lanMakeGetMove(row, col)
-                self.play(row, col)
-                self.updateState()
+            elif self.currGameRecord.mode == Mode.LAN and self.currPlayers[self.currGameRecord.game.player] == Player.OPP:
+                self.client.makeMove((row, col))
+                x = threading.Thread(target=self.lanGetDisplayMove)
+                x.start()
 
-    def lanMakeGetMove(self, row, col):
-        self.client.makeMove((row, col))
-        return self.client.getMove()
+    def lanGetDisplayMove(self):
+        row, col = self.client.getMove()
+        self.play(row, col)
+        self.updateState()
 
     def updateState(self):
         self.p1CapLabel.config(text=f"Player 1 captured pairs: {len(self.currGameRecord.game.captures[Game.P1])}")
@@ -600,15 +612,20 @@ class Gui(Ui):
         if self.currGameRecord.game.winner != Game.ONGOING:
             self.displayWin()
 
+    def connectAndGetOpp(self):
+        self.client.makeConnection()
+        self.client.getOpponent()
+        self.opponent = self.client.opponent
+        self.playGame(self.client.playerNo, Mode.LAN)
+
     def connectLan(self, playGameWindow):
         playGameWindow.destroy()
         self.client = Client(self.player)
-        self.client.makeConnection()
         self.headLabel.config(text="Waiting for opponent...")
-        self.client.getOpponent()
-        self.opponent = self.client.opponent
-        self.playGame(self.client.playerNo, "LAN")
-
+        x = threading.Thread(target=self.connectAndGetOpp)
+        x.start()
+        
+        
 class Terminal(Ui):
 
     def __init__(self):
@@ -667,7 +684,7 @@ class Terminal(Ui):
         else:
             print(memberMenu)
             c = self.getChoice(1, 3)
-        return ["COMP", "PVP", "LAN"][c-1]
+        return [Mode.COMP, Mode.PVP, Mode.LAN][c-1]
 
     def choosePlayer(self):
         if self.player == Player.GUEST and self.opponent == Player.GUEST:
@@ -701,11 +718,11 @@ class Terminal(Ui):
         mode = self.chooseMode()
         self.currGameRecord = GameRecord(game=Game(19), mode=mode)
         client = None
-        if mode == "LAN":
+        if mode == Mode.LAN:
             client = self.connectLan()
             player = client.playerNo
         else:
-            if mode == "PVP":
+            if mode == Mode.PVP:
                 self.opponent = Player.GUEST
                 menu = """
                 The other player will:
@@ -715,7 +732,7 @@ class Terminal(Ui):
                 print(menu)
                 if self.getChoice(1, 2) == 2:
                     self.login(Player.OPP)
-            elif mode == "COMP":
+            elif mode == Mode.COMP:
                 self.opponent = Player.COMP
             player = self.choosePlayer()
         otherPlayer = Game.P2 if player == Game.P1 else Game.P1
@@ -844,7 +861,7 @@ class Terminal(Ui):
         players = [Database.getPlayerGameUsername(gameRecord.id, Game.P1), Database.getPlayerGameUsername(gameRecord.id, Game.P2)]
         for i in range(2):
             if players[i] == False:
-                if gameRecord.mode == "COMP":
+                if gameRecord.mode == Mode.COMP:
                     players[i] = "computer"
                 else:
                     players[i] = "guest"
@@ -950,7 +967,7 @@ class Terminal(Ui):
             print(playerStr)
             if self.currPlayers[game.player] == Player.COMP:
                 row, col = Ai.play(game.board, game.captures, game.player)
-            elif self.currGameRecord.mode == "LAN":
+            elif self.currGameRecord.mode == Mode.LAN:
                 if self.currPlayers[game.player] == self.player:
                     row, col = self.getRowCol(game.board)
                     client.makeMove((row, col))
@@ -968,7 +985,7 @@ class Terminal(Ui):
             print("Player 2 has won!")
         else:
             print("It is a draw.")
-        if self.currGameRecord.mode == "LAN": client.closeConnection()
+        if self.currGameRecord.mode == Mode.LAN: client.closeConnection()
 
     def connectLan(self):
         client = Client(self.player)
@@ -983,9 +1000,3 @@ class Terminal(Ui):
         print(f"Opponent: {self.opponent} (player {oppNo})")
         print(f"You are player {playerNo}")
         return client
-
-class Player(Enum):
-    MAIN = auto()
-    OPP = auto()
-    GUEST = auto()
-    COMP = auto()
