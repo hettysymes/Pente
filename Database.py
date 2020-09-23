@@ -1,6 +1,7 @@
 import sqlite3
 import pickle
 from datetime import datetime
+import os
 import Ui
 from Game import Game
 from Datatypes import GameRecord
@@ -25,8 +26,11 @@ class HashTable:
         passwordHash = self.__hashFunction(password)
         return username in self._hashTable[passwordHash]
 
+def exists():
+    return os.path.exists("PenteDatabase.db")
+
 def connect():
-    conn = sqlite3.connect('PenteDatabase.db')
+    conn = sqlite3.connect("PenteDatabase.db")
     c = conn.cursor()
     return conn, c
 
@@ -34,7 +38,7 @@ def close(conn):
     conn.commit()
     conn.close()
 
-def createTables():
+def createDatabase():
     playerSQL = """
     CREATE TABLE Player(
     username TEXT PRIMARY KEY,
@@ -68,27 +72,15 @@ def createTables():
     conn, c = connect()
     tableSQLDict = {"Player": playerSQL, "HashTable": hashtableSQL, "Game": gameSQL, "PlayerGame": playergameSQL}
     for tableName, sql in tableSQLDict.items():
-        if not tableExists(tableName):
-            c.execute(sql)
-            if tableName == "HashTable":
-                hashtable = pickle.dumps(HashTable())
-                recordSQL = """
-                INSERT INTO HashTable(id, hashTable)
-                VALUES(1, ?);
-                """
-                editTable(recordSQL, (hashtable,))
+        c.execute(sql)
+        if tableName == "HashTable":
+            hashtable = pickle.dumps(HashTable())
+            recordSQL = """
+            INSERT INTO HashTable(id, hashTable)
+            VALUES(1, ?);
+            """
+            editTable(recordSQL, (hashtable,))
     close(conn)
-
-def tableExists(tableName):
-    existsQuery = f"SELECT count(name) FROM sqlite_master WHERE type='table' AND name='{tableName}';"
-    conn, c = connect()
-    c.execute(existsQuery)
-    if c.fetchone()[0]==1: 
-	    res = True
-    else:
-	    res = False
-    close(conn)
-    return res
 
 def editTable(recordSQL, values, getId=False):
     conn, c = connect()

@@ -30,7 +30,7 @@ class Server:
         while 1:
             s.listen(1)
             c, addr = s.accept()
-            x = threading.Thread(target=self.handle_client, args=(c,))
+            x = threading.Thread(target=self.handleClient, args=(c,))
             x.start()
 
     def getOpponent(self):
@@ -46,7 +46,7 @@ class Server:
             self.onlineUsers[u1][0].send(pickle.dumps(Msg(None, (u2, p1))))
             self.onlineUsers[u2][0].send(pickle.dumps(Msg(None, (u1, p2))))
 
-    def handle_client(self, c):
+    def handleClient(self, c):
         while True:
             recvMsg = c.recv(1024)
             if not recvMsg:

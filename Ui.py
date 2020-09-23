@@ -491,7 +491,8 @@ class Gui(Ui):
             x.start()
 
     def run(self):
-        Database.createTables()
+        if not Database.exists():
+            Database.createDatabase()
         self.root.mainloop()
 
     def createImages(self, squareSize):
@@ -663,7 +664,8 @@ class Terminal(Ui):
         return self._currPlayers
 
     def run(self):
-        Database.createTables()
+        if not Database.exists():
+            Database.createDatabase()
         self.displayMenu()
 
     def chooseMode(self):
