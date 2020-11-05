@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 from copy import deepcopy
-from Game import Game, GameError
-from Datatypes import GameRecord
+from Game import Game, GameError, GameRecord
 from colorama import Fore, Style
 from enum import Enum, auto
 from datetime import datetime
@@ -394,7 +393,8 @@ class Gui(Ui):
                 else:
                     self.currGameRecord.whenSaved = datetime.now()
                     command = lambda: Database.updateGame(self.currGameRecord)
-                Button(self.optionFrame, text="Save game", command=command).grid(row=2, column=0, padx=10, pady=5)
+                if self.currGameRecord.mode != Mode.LAN:
+                    Button(self.optionFrame, text="Save game", command=command).grid(row=2, column=0, padx=10, pady=5)
         else:
             Label(self.optionFrame, text="Start playing?").grid(row=0, column=0, padx=10, pady=5)
 
@@ -964,7 +964,7 @@ class Terminal(Ui):
         print("\nTo enter a move, enter the row followed by the column e.g. 1A or 1a.\n")
         while game.winner == Game.ONGOING:
             self.printState(game.board, game.captures)
-            if not self.chooseContinue(game): return
+            if (self.currGameRecord.mode != Mode.LAN) and (not self.chooseContinue(game)): return
             playerStr = "Player 1 to play" if game.player == Game.P1 else "Player 2 to play"
             print(playerStr)
             if self.currPlayers[game.player] == Player.COMP:

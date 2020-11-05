@@ -3,7 +3,7 @@ import threading
 import pickle
 import time
 from Game import Game
-from Datatypes import Msg, Cmd
+from ServerClientDatatypes import Msg, Cmd
 import random
 
 class Server:

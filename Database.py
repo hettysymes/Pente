@@ -3,8 +3,7 @@ import pickle
 from datetime import datetime
 import os
 import Ui
-from Game import Game
-from Datatypes import GameRecord
+from Game import Game, GameRecord
 
 class HashTable:
 

@@ -7,29 +7,29 @@ from itertools import product
 class Node:
 
     def __init__(self, row, col, root=False):
-        self.__row = row
-        self.__col = col
-        self.__children = []
-        self.__root = root
+        self._row = row
+        self._col = col
+        self._children = []
+        self._root = root
 
     @property
     def row(self):
-        return self.__row
+        return self._row
 
     @property
     def col(self):
-        return self.__col
+        return self._col
 
     @property
     def children(self):
-        return self.__children
+        return self._children
 
     @property
     def root(self):
-        return self.__root
+        return self._root
 
     def addChild(self, row, col):
-        self.__children.append(Node(row, col))
+        self._children.append(Node(row, col))
 
 def getNumberOfLines(board, lengths, player):
     boardsize = len(board)

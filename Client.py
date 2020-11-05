@@ -1,6 +1,6 @@
 import socket
 import pickle
-from Datatypes import Msg, Cmd
+from ServerClientDatatypes import Msg, Cmd
 
 class Client:
 
