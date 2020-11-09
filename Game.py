@@ -117,7 +117,7 @@ class Game:
         if Game.offBoard(row, col, len(board)):
             raise GameError("Move is off the board")
         elif board[row][col] != Game.EMPTY:
-            raise GameError("Position is not empty")        
+            raise GameError("Position is not empty")
 
     def play(self, row, col):
         self.board, self.captures, self.player = Game.newState(self.board, self.captures, self.player, row, col)

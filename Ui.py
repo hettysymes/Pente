@@ -7,6 +7,7 @@ from datetime import datetime
 import Database
 import Ai
 from tkinter import *
+from tkinter import ttk
 from functools import partial
 from PIL import Image, ImageDraw
 from Client import Client
@@ -270,12 +271,20 @@ class Gui(Ui):
         if not games:
             Label(loadGameWindow, text="You have no ongoing games").grid(row=0, column=0, padx=10, pady=5)
         else:
-            Label(loadGameWindow, text="Ongoing games:").grid(row=0, column=0, padx=10, pady=5)
-            for i, gameRecord in enumerate(games):
-                Button(loadGameWindow, text=f"{i+1}. {self.gameString(gameRecord)}", command=partial(self.loadGame, loadGameWindow, gameRecord)).grid(row=i+1, column=0, padx=5)
-            Label(loadGameWindow, text="Select a game to load").grid(row=i+2, column=0, padx=10, pady=5)
+            Label(loadGameWindow, text="Select an ongoing game:").grid(row=0, column=0, padx=10, pady=5)
+            values = []
+            for gameRecord in games:
+                values.append(self.gameString(gameRecord))
+            comboBox = ttk.Combobox(loadGameWindow, values=values, width=100)
+            comboBox.current(0)
+            comboBox.grid(row=1, column=0, padx=10, pady=5)
+            Button(loadGameWindow, text="Load game", command=partial(self.loadGame, loadGameWindow, comboBox.get())).grid(row=2, column=0, padx=10, pady=5)
 
-    def loadGame(self, loadGameWindow, gameRecord):
+    def loadGame(self, loadGameWindow, gameInfo):
+        games = Database.loadGames(self.player, Game.ONGOING)
+        for gameRecord in games:
+            if self.gameString(gameRecord) == gameInfo:
+                break
         self.currGameRecord = gameRecord
         players = [Database.getPlayerGameUsername(self.currGameRecord.id, Game.P1), Database.getPlayerGameUsername(self.currGameRecord.id, Game.P2)]
         mainPlayerPos = None
@@ -880,31 +889,26 @@ class Terminal(Ui):
         
         return f"{gameRecord.name:25s}{mode:25s}saved on {whenSaved:25s}status: {status}"
 
-    def getRowCol(self, board):
-        while True:
-            move = input("\nEnter move: ")
-            if len(move) == 0:
-                print("\nPlease enter a move.")
-                continue
-            row, col = move[:-1], move[-1]
-            try:
-                row = int(row)
-            except:
-                print("\nThat is an invalid move. Please try again.")
-                continue
-            if 97 <= ord(col) <= 122:
-                col = chr(ord(col)-32)
-            elif not (65 <= ord(col) <= 90):
-                print("\nThat is an invalid move. Please try again.")
-                continue
-            row -= 1
-            col = ord(col)-65
-            try:
-                Game.validateRowCol(row, col, board)
-            except GameError as err:
-                print(f"\nError: {err}. Please try again.")
-            else:
-                return row, col
+    def getRowCol(self, move, board):
+        if len(move) == 0:
+            raise GameError("No move played")
+        row, col = move[:-1], move[-1]
+        try:
+            row = int(row)
+        except:
+            raise GameError("Invalid move")
+        if 97 <= ord(col) <= 122:
+            col = chr(ord(col)-32)
+        elif not (65 <= ord(col) <= 90):
+            raise GameError("Invalid move")
+        row -= 1
+        col = ord(col)-65
+        try:
+            Game.validateRowCol(row, col, board)
+        except GameError:
+            raise GameError("Invalid move")
+        else:
+            return row, col
 
     def saveGame(self, game):
         self.currGameRecord.whenSaved, self.currGameRecord.game = datetime.now(), game
@@ -935,51 +939,77 @@ class Terminal(Ui):
         Database.deleteGame(games[inp-1].id)
         print(f"Game '{games[inp-1].name}' successfully deleted.")
 
-    def chooseContinue(self, game):
-        while 1:
-            inp = input("Press q to quit, u to undo, and any other key to continue > ")
-            if inp == "q":
-                nonGuests = [player for player in [self.player, self.opponent] if player != Player.GUEST and player != Player.COMP]
-                if nonGuests:
-                        if len(nonGuests) > 1:
-                            playerString = f"{nonGuests[0]}'s and {nonGuests[1]}'s accounts"
-                        else:
-                            playerString = f"{nonGuests[0]}'s account"
-                        yes = self.getYesNo(f"Would you like to save your game to {playerString}? (y/n) ")
-                        if yes:
-                            self.saveGame(game)
-                return False
-            elif inp == "u":
-                try:
-                    game.undo()
-                except GameError as e:
-                    print(f"Error: {e}")
-                else:
-                    self.printState(game.board, game.captures)
+    def processChoice(self, choice, game):
+        if choice == "s":
+            nonGuests = [player for player in [self.player, self.opponent] if player != Player.GUEST and player != Player.COMP]
+            if nonGuests:
+                    if len(nonGuests) > 1:
+                        playerString = f"{nonGuests[0]}'s and {nonGuests[1]}'s accounts"
+                    else:
+                        playerString = f"{nonGuests[0]}'s account"
+                    yes = self.getYesNo(f"Would you like to save your game to {playerString}? (y/n) ")
+                    if yes:
+                        self.saveGame(game)
             else:
-                return True
+                print("Save not available")
+        elif choice == "u":
+            try:
+                game.undo()
+            except GameError as e:
+                print(f"Error: {e}")
+            else:
+                self.printState(game.board, game.captures)
+        return game
+
+    def getMove(self, board):
+        while 1:
+            choice = input("Enter move: ")
+            if choice == "q":
+                return choice, False, True
+            elif choice == "s" and self.currGameRecord.mode != Mode.LAN:
+                return choice, False, False
+            elif choice == "u" and self.currGameRecord.mode != Mode.LAN:
+                return choice, False, False
+            else:
+                try:
+                    row, col = self.getRowCol(choice, board)
+                    return (row, col), True, False
+                except GameError as err:
+                    print(f"Error: {err}. Try again.")
 
     def play(self, client=None):
         game = self.currGameRecord.game
-        print("\nTo enter a move, enter the row followed by the column e.g. 1A or 1a.\n")
+        print("\nTo enter a move, enter the row followed by the column e.g. 1A or 1a.")
+        print("Other than entering a move you can type q to quit, s to save, and u to undo.\n")
         while game.winner == Game.ONGOING:
             self.printState(game.board, game.captures)
-            if (self.currGameRecord.mode != Mode.LAN) and (not self.chooseContinue(game)): return
             playerStr = "Player 1 to play" if game.player == Game.P1 else "Player 2 to play"
             print(playerStr)
             if self.currPlayers[game.player] == Player.COMP:
                 row, col = Ai.play(game.board, game.captures, game.player)
-            elif self.currGameRecord.mode == Mode.LAN:
-                if self.currPlayers[game.player] == self.player:
-                    row, col = self.getRowCol(game.board)
-                    client.makeMove((row, col))
+            elif self.currGameRecord.mode == Mode.LAN and self.currPlayers[game.player] != self.player:
+                print(f"Waiting for {client.opponent} to play...")
+                row, col = client.getMove()
+                if (row, col) == (-1, -1):
+                    print("Server error: Your opponent has quit.")
+                    print("Press any key to quit.")
+                    input()
+                    return
                 else:
-                    print(f"Waiting for {client.opponent} to play...")
-                    row, col = client.getMove()
+                    game.play(row, col)
                     print(f"{client.opponent} played: {row+1}{chr(col+65)}")
             else:
-                row, col = self.getRowCol(game.board)
-            game.play(row, col)
+                choice, isMove, end = self.getMove(game.board)
+                if not isMove:
+                    game = self.processChoice(choice, game)
+                    if end:
+                        if self.currGameRecord.mode == Mode.LAN:
+                            client.closeConnection()
+                        return
+                else:
+                    row, col = choice
+                    game.play(row, col)
+                    if self.currGameRecord.mode == Mode.LAN: client.makeMove((row, col))
         self.printState(game.board, game.captures)
         if game.winner == Game.P1:
             print("Player 1 has won!")

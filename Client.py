@@ -55,12 +55,14 @@ class Client:
     def getMove(self):
         self.s.send(pickle.dumps(Msg(self.username, Cmd.GETMOVE)))
         move = pickle.loads(self.s.recv(1024)).data
+        if not move:
+            return (-1, -1)
         return move
 
     def makeMove(self, move):
         self.s.send(pickle.dumps(Msg(self.username, move, self.opponent)))
 
     def closeConnection(self):
-        self.s.send(pickle.dumps(Msg(self.username, Cmd.REM)))
+        self.s.send(pickle.dumps(Msg(self.username, Cmd.REM, self.opponent)))
         data = self.s.recv(1024)
         self.s.close()

@@ -52,7 +52,11 @@ class Server:
             if not recvMsg:
                 break
             msg = pickle.loads(recvMsg)
-            if msg.receiver != None:
+            if msg.data == Cmd.REM:
+                self.onlineUsers[msg.receiver][2] = pickle.dumps(Msg(None, False))
+                del self.onlineUsers[msg.sender]
+                c.send(pickle.dumps("ACK"))
+            elif msg.receiver != None:
                 self.onlineUsers[msg.receiver][2] = recvMsg
             elif msg.data == Cmd.ADD:
                 self.onlineUsers[msg.sender] = [c, None, None]
@@ -67,9 +71,6 @@ class Server:
                     time.sleep(0.1)
                 self.onlineUsers[msg.sender][0].send(message)
                 self.onlineUsers[msg.sender][2] = None
-            elif msg.data == Cmd.REM:
-                del self.onlineUsers[msg.sender]
-                c.send(pickle.dumps("ACK"))
 
 if __name__ == "__main__":
     server = Server()
