@@ -429,6 +429,15 @@ class Gui(Ui):
         Button(confirmQuitWindow, text="No", command=confirmQuitWindow.destroy).grid(row=2, column=1)
 
     def quitGame(self, confirmQuitWindow):
+        if self.currGameRecord.mode == Mode.LAN:
+            if not self.client.requestingMove:
+                self.client.closeConnection()
+            else:
+                quitErrorWindow = Toplevel(confirmQuitWindow)
+                quitErrorWindow.title("Quit Error")
+                Label(quitErrorWindow, text="You can only quit on your turn").grid(row=0, column=0, padx=5, pady=5)
+                Button(quitErrorWindow, text="Ok", command=quitErrorWindow.destroy).grid(row=1, column=0, padx=5, pady=5)
+                return
         self.playing = False
         self.updateGameFrame()
         self.updateOptionFrame()
@@ -556,7 +565,18 @@ class Gui(Ui):
                 x.start()
 
     def lanGetDisplayMove(self):
+        if not self.playing:
+            return
         row, col = self.client.getMove()
+        if (row, col) == (-1, -1):
+            self.playing = False
+            self.updateGameFrame()
+            self.updateOptionFrame()
+            opponentQuit = Toplevel(self.root)
+            opponentQuit.title("Opponent quit")
+            Label(opponentQuit, text="Your opponent has quit").grid(row=0, column=0, padx=5, pady=5)
+            Button(opponentQuit, text="OK", command=opponentQuit.destroy).grid(row=1, column=0, padx=5, pady=5)
+            return
         self.play(row, col)
         self.updateState()
 
@@ -992,7 +1012,7 @@ class Terminal(Ui):
                 row, col = client.getMove()
                 if (row, col) == (-1, -1):
                     print("Server error: Your opponent has quit.")
-                    print("Press any key to quit.")
+                    print("Press any key to continue.")
                     input()
                     return
                 else:

@@ -9,6 +9,7 @@ class Client:
         self._opponent = None
         self._playerNo = None
         self._s = None
+        self._requestingMove = False
 
     @property
     def username(self):
@@ -38,6 +39,14 @@ class Client:
     def s(self, s):
         self._s = s
 
+    @property
+    def requestingMove(self):
+        return self._requestingMove
+
+    @requestingMove.setter
+    def requestingMove(self, bool):
+        self._requestingMove = bool
+
     def makeConnection(self):
         host = socket.gethostname()
         port = 8080
@@ -53,8 +62,10 @@ class Client:
         self.opponent, self.playerNo = pickle.loads(self.s.recv(1024)).data
 
     def getMove(self):
+        self.requestingMove = True
         self.s.send(pickle.dumps(Msg(self.username, Cmd.GETMOVE)))
         move = pickle.loads(self.s.recv(1024)).data
+        self.requestingMove = False
         if not move:
             return (-1, -1)
         return move
@@ -64,5 +75,4 @@ class Client:
 
     def closeConnection(self):
         self.s.send(pickle.dumps(Msg(self.username, Cmd.REM, self.opponent)))
-        data = self.s.recv(1024)
         self.s.close()
