@@ -58,6 +58,8 @@ class Gui(Ui):
         self._headLabel = Label(self.gameFrame, bg="white", fg="black", font=("Helvetica", 18))
         self._headLabel.grid(row=0, column=0, sticky="NESW")
 
+        self.playerNoPlayingLabel = None
+
         self._c = Canvas()
         self._p1CapLabel = Label(self.gameFrame, relief="ridge", font=("Helvetica", 18))
         self._p1CapLabel.grid(row=1, column=0, sticky="NESW")
@@ -394,8 +396,19 @@ class Gui(Ui):
     def updateOptionFrame(self):
         for widget in self.optionFrame.winfo_children(): widget.destroy()
         if self.playing:
-            Button(self.optionFrame, text="Undo", command=self.undo).grid(row=0, column=0, padx=10, pady=5)
-            Button(self.optionFrame, text="Quit game", command=self.confirmQuit).grid(row=1, column=0, padx=10, pady=5)
+            if self.currGameRecord.game.player == Game.P1:
+                num = 1
+            else:
+                num = 2
+            self.playerNoPlayingLabel = Label(self.optionFrame, text=f"Player {num} to play")
+            self.playerNoPlayingLabel.grid(row=0, column=0, padx=10, pady=5)
+            Button(self.optionFrame, text="Undo", command=self.undo).grid(row=1, column=0, padx=10, pady=5)
+            Button(self.optionFrame, text="Quit game", command=self.confirmQuit).grid(row=2, column=0, padx=10, pady=5)
+            if self.currGameRecord.mode == Mode.LAN:
+                if self.client.playerNo == Game.P1:
+                    Label(self.optionFrame, text="YOU ARE PLAYER 1").grid(row=3, column=0, padx=10, pady=5)
+                else:
+                    Label(self.optionFrame, text="YOU ARE PLAYER 2").grid(row=3, column=0, padx=10, pady=5)
             if self.player != Player.GUEST or (self.opponent not in [Player.GUEST, Player.COMP]):
                 if self.currGameRecord.id == -1:
                     command = self.createSaveGameWindow
@@ -430,7 +443,7 @@ class Gui(Ui):
 
     def quitGame(self, confirmQuitWindow):
         if self.currGameRecord.mode == Mode.LAN:
-            if not self.client.requestingMove:
+            if (not self.client.requestingMove) or (not self.playing):
                 self.client.closeConnection()
             else:
                 quitErrorWindow = Toplevel(confirmQuitWindow)
@@ -640,7 +653,13 @@ class Gui(Ui):
     def play(self, row, col):
         self.currGameRecord.game.play(row, col)
         if self.currGameRecord.game.winner != Game.ONGOING:
+            self.playerNoPlayingLabel.config(text="Game ended")
             self.displayWin()
+            self.playing = False
+        elif self.currGameRecord.game.player == Game.P1:
+            self.playerNoPlayingLabel.config(text="Player 1 to play")
+        else:
+            self.playerNoPlayingLabel.config(text="Player 2 to play")
 
     def connectAndGetOpp(self):
         self.client.makeConnection()

@@ -53,7 +53,8 @@ class Server:
                 break
             msg = pickle.loads(recvMsg)
             if msg.data == Cmd.REM:
-                self.onlineUsers[msg.receiver][2] = pickle.dumps(Msg(None, False))
+                if msg.receiver in self.onlineUsers:
+                    self.onlineUsers[msg.receiver][2] = pickle.dumps(Msg(None, False))
                 del self.onlineUsers[msg.sender]
                 break
             elif msg.receiver != None and msg.receiver in self.onlineUsers:
