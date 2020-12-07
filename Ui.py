@@ -24,23 +24,72 @@ class Mode:
     COMP = "COMP"
     LAN = "LAN"
 
-class Ui (ABC):
+class Ui:
 
-    @abstractmethod
+    def __init__(self):
+        self._player = Player.GUEST
+        self._opponent = Player.GUEST
+        self._currPlayers = {Game.P1: Player.MAIN, Game.P2: Player.OPP}
+        self._currGameRecord = None
+        self._client = None
+
+    @property
+    def player(self):
+        return self._player
+
+    @player.setter
+    def player(self, player):
+        self._player = player
+
+    @property
+    def opponent(self):
+        return self._opponent
+
+    @opponent.setter
+    def opponent(self, opponent):
+        self._opponent = opponent
+
+    @property
+    def currPlayers(self):
+        return self._currPlayers
+
+    @currPlayers.setter
+    def currPlayers(self, currPlayers):
+        self._currPlayers = currPlayers
+
+    @property
+    def currGameRecord(self):
+        return self._currGameRecord
+
+    @currGameRecord.setter
+    def currGameRecord(self, currGameRecord):
+        self._currGameRecord = currGameRecord
+
+    @property
+    def client(self):
+        return self._client
+
+    @client.setter
+    def client(self, client):
+        self._client = client
+
+    def getUsernameOfPlayerNumber(self, player):
+        if self.currPlayers[player] == Player.MAIN:
+            return self.player
+        else:
+            return self.opponent
+
     def run(self):
         raise NotImplementedError
 
 class Gui(Ui):
 
     def __init__(self):
+        super().__init__()
+
         self._MAX_CANVAS_SIZE = 730
-        self._player = Player.GUEST
-        self._opponent = Player.GUEST
-        self._currGameRecord = None
-        self._currPlayers = {Game.P1: Player.MAIN, Game.P2: Player.OPP}
         self._currentBoard = None
         self._playing = False
-        self._client = None
 
         self._root = Tk()
         self._root.title("Pente")
@@ -75,38 +124,6 @@ class Gui(Ui):
         return self._MAX_CANVAS_SIZE
 
     @property
-    def player(self):
-        return self._player
-
-    @player.setter
-    def player(self, player):
-        self._player = player
-
-    @property
-    def opponent(self):
-        return self._opponent
-
-    @opponent.setter
-    def opponent(self, opponent):
-        self._opponent = opponent
-
-    @property
-    def currGameRecord(self):
-        return self._currGameRecord
-
-    @currGameRecord.setter
-    def currGameRecord(self, currGameRecord):
-        self._currGameRecord = currGameRecord
-
-    @property
-    def currPlayers(self):
-        return self._currPlayers
-
-    @currPlayers.setter
-    def currPlayers(self, currPlayers):
-        self._currPlayers = currPlayers
-
-    @property
     def currentBoard(self):
         return self._currentBoard
 
@@ -121,14 +138,6 @@ class Gui(Ui):
     @playing.setter
     def playing(self, playing):
         self._playing = playing
-
-    @property
-    def client(self):
-        return self._client
-
-    @client.setter
-    def client(self, client):
-        self._client = client
 
     @property
     def root(self):
@@ -201,10 +210,6 @@ class Gui(Ui):
     @p2CapLabel.setter
     def p2CapLabel(self, p2CapLabel):
         self._p2CapLabel = p2CapLabel
-    
-    def getPlayer(self, player):
-        p = self.currPlayers[player]
-        return self.player if p == Player.MAIN else self.opponent
 
     def chooseGameMode(self):
         playGameWindow = Toplevel(self.root)
@@ -303,8 +308,8 @@ class Gui(Ui):
 
     def getCurrPlayerStrings(self):
         players = []
-        for player in [self.currPlayers[Game.P1], self.currPlayers[Game.P2]]:
-            p = self.player if player == Player.MAIN else self.opponent
+        for player in [Game.P1, Game.P2]:
+            p = self.getUsernameOfPlayerNumber(player)
             if p == Player.GUEST:
                 players.append("Guest")
             elif p == Player.COMP:
@@ -346,8 +351,8 @@ class Gui(Ui):
             statusLabel.config(text="Please enter a name to save the game as")
         else:
             self.currGameRecord.whenSaved, self.currGameRecord.name = datetime.now(), gameName
-            p1 = self.player if self.currPlayers[Game.P1] == Player.MAIN else self.opponent
-            p2 = self.player if self.currPlayers[Game.P2] == Player.MAIN else self.opponent
+            p1 = self.getUsernameOfPlayerNumber(Game.P1)
+            p2 = self.getUsernameOfPlayerNumber(Game.P2)
             Database.saveGame(p1, p2, self.currGameRecord)
             saveGameWindow.destroy()
 
@@ -404,8 +409,8 @@ class Gui(Ui):
             self.playerNoPlayingLabel.grid(row=0, column=0, padx=10, pady=5)
             Button(self.optionFrame, text="Undo", command=self.undo).grid(row=1, column=0, padx=10, pady=5)
             Button(self.optionFrame, text="Quit game", command=self.confirmQuit).grid(row=2, column=0, padx=10, pady=5)
-            if self.currGameRecord.mode == Mode.LAN:
-                if self.client.playerNo == Game.P1:
+            if self.currGameRecord.mode != Mode.PVP:
+                if self.currPlayers[Game.P1] == Player.MAIN:
                     Label(self.optionFrame, text="YOU ARE PLAYER 1").grid(row=3, column=0, padx=10, pady=5)
                 else:
                     Label(self.optionFrame, text="YOU ARE PLAYER 2").grid(row=3, column=0, padx=10, pady=5)
@@ -515,7 +520,7 @@ class Gui(Ui):
         self.createImages(squareSize)
         self.updateGameFrame(squareSize, canvasSize, gridsize)
         self.updateOptionFrame()
-        if self.getPlayer(self.currGameRecord.game.player) == Player.COMP:
+        if self.getUsernameOfPlayerNumber(self.currGameRecord.game.player) == Player.COMP:
             self.playComputer()
         elif self.currGameRecord.mode == Mode.LAN and self.currPlayers[self.currGameRecord.game.player] == Player.OPP:
             x = threading.Thread(target=self.lanGetDisplayMove)
@@ -678,10 +683,7 @@ class Gui(Ui):
 class Terminal(Ui):
 
     def __init__(self):
-        self._player = Player.GUEST
-        self._opponent = Player.GUEST
-        self._currGameRecord = None
-        self._currPlayers = {Game.P1: Player.GUEST, Game.P2: Player.GUEST}
+        super().__init__()
 
     @property
     def player(self):
@@ -767,10 +769,9 @@ class Terminal(Ui):
     def playGame(self):
         mode = self.chooseMode()
         self.currGameRecord = GameRecord(game=Game(19), mode=mode)
-        client = None
         if mode == Mode.LAN:
-            client = self.connectLan()
-            player = client.playerNo
+            self.connectLan()
+            player = self.client.playerNo
         else:
             if mode == Mode.PVP:
                 self.opponent = Player.GUEST
@@ -786,9 +787,9 @@ class Terminal(Ui):
                 self.opponent = Player.COMP
             player = self.choosePlayer()
         otherPlayer = Game.P2 if player == Game.P1 else Game.P1
-        self.currPlayers[player] = self.player
-        self.currPlayers[otherPlayer] = self.opponent
-        self.play(client)
+        self.currPlayers[player] = Player.MAIN
+        self.currPlayers[otherPlayer] = Player.OPP
+        self.play()
 
     def displayMenu(self):
         guestMethods = {1: self.playGame, 2: lambda: self.login(Player.MAIN), 3: self.createAccount, 4: quit}
@@ -956,7 +957,7 @@ class Terminal(Ui):
         else:
             name = input("Enter name to save game as: ")
             self.currGameRecord.name = name
-            Database.saveGame(self.currPlayers[Game.P1], self.currPlayers[Game.P2], self.currGameRecord)
+            Database.saveGame(self.getUsernameOfPlayerNumber(Game.P1), self.getUsernameOfPlayerNumber(Game.P2), self.currGameRecord)
         print("Game saved successfully.")
 
     def loadGame(self):
@@ -1016,7 +1017,7 @@ class Terminal(Ui):
                 except GameError as err:
                     print(f"Error: {err}. Try again.")
 
-    def play(self, client=None):
+    def play(self):
         game = self.currGameRecord.game
         print("\nTo enter a move, enter the row followed by the column e.g. 1A or 1a.")
         print("Other than entering a move you can type q to quit, s to save, and u to undo.\n")
@@ -1024,11 +1025,12 @@ class Terminal(Ui):
             self.printState(game.board, game.captures)
             playerStr = "Player 1 to play" if game.player == Game.P1 else "Player 2 to play"
             print(playerStr)
-            if self.currPlayers[game.player] == Player.COMP:
+            if self.getUsernameOfPlayerNumber(game.player) == Player.COMP:
                 row, col = Ai.play(game.board, game.captures, game.player)
-            elif self.currGameRecord.mode == Mode.LAN and self.currPlayers[game.player] != self.player:
-                print(f"Waiting for {client.opponent} to play...")
-                row, col = client.getMove()
+                game.play(row, col)
+            elif self.currGameRecord.mode == Mode.LAN and self.currPlayers[game.player] != Player.MAIN:
+                print(f"Waiting for {self.client.opponent} to play...")
+                row, col = self.client.getMove()
                 if (row, col) == (-1, -1):
                     print("Server error: Your opponent has quit.")
                     print("Press any key to continue.")
@@ -1036,19 +1038,19 @@ class Terminal(Ui):
                     return
                 else:
                     game.play(row, col)
-                    print(f"{client.opponent} played: {row+1}{chr(col+65)}")
+                    print(f"{self.client.opponent} played: {row+1}{chr(col+65)}")
             else:
                 choice, isMove, end = self.getMove(game.board)
                 if not isMove:
                     game = self.processChoice(choice, game)
                     if end:
                         if self.currGameRecord.mode == Mode.LAN:
-                            client.closeConnection()
+                            self.client.closeConnection()
                         return
                 else:
                     row, col = choice
                     game.play(row, col)
-                    if self.currGameRecord.mode == Mode.LAN: client.makeMove((row, col))
+                    if self.currGameRecord.mode == Mode.LAN: self.client.makeMove((row, col))
         self.printState(game.board, game.captures)
         if game.winner == Game.P1:
             print("Player 1 has won!")
@@ -1056,18 +1058,17 @@ class Terminal(Ui):
             print("Player 2 has won!")
         else:
             print("It is a draw.")
-        if self.currGameRecord.mode == Mode.LAN: client.closeConnection()
+        if self.currGameRecord.mode == Mode.LAN: self.client.closeConnection()
 
     def connectLan(self):
-        client = Client(self.player)
+        self.client = Client(self.player)
         print("Waiting for connection...")
-        client.makeConnection()
+        self.client.makeConnection()
         print("Connected.")
         print("Waiting for opponent...")
-        client.getOpponent()
-        self.opponent = client.opponent
-        playerNo = 1 if client.playerNo == Game.P1 else 2
+        self.client.getOpponent()
+        self.opponent = self.client.opponent
+        playerNo = 1 if self.client.playerNo == Game.P1 else 2
         oppNo = 1 if playerNo == 2 else 2
         print(f"Opponent: {self.opponent} (player {oppNo})")
         print(f"You are player {playerNo}")
-        return client
