@@ -3,6 +3,7 @@ import Ui
 from math import inf
 from operator import itemgetter
 from itertools import product
+import random
 
 # The Node class contains all information needed about a game state used by the minimax algorithm.
 class Node:
@@ -71,6 +72,39 @@ def getNextTo(board):
                     nextTo.add((row+rc[0], col+rc[1]))
     return list(nextTo)
 
+def pickRandomMove(board):
+    emptyCoords = []
+    for row in range(len(board)):
+        for col in range(len(board)):
+            if board[row][col] == Game.EMPTY:
+                emptyCoords.append((row, col))
+    return random.choice(emptyCoords)
+
+def canMakeImmediateMove(board, captures, player):
+    captureMove = [None, False]
+    opp = Game.P1 if player == Game.P2 else Game.P2
+    for row in range(len(board)):
+        for col in range(len(board)):
+            if board[row][col] != Game.EMPTY:
+                continue
+            tempBoard, tempCaptures = Game.newState(board, captures, player, row, col)[:-1]
+            if Game.getWinner(tempBoard, tempCaptures) == player:
+                return True, (row, col)
+            elif len(tempCaptures[player]) > len(captures[player]):
+                captureMove = [(row, col), True]
+            tempBoard, tempCaptures = Game.newState(board, captures, opp, row, col)[:-1]
+            if Game.getWinner(tempBoard, tempCaptures) == opp:
+                return True, (row, col)
+            elif Game.inRow(tempBoard, row, col, [opp, opp, opp]):
+                return True, (row, col)
+            elif len(tempCaptures[opp]) > len(captures[opp]):
+                captureMove = [(row, col), True]
+            elif Game.inRow(board, row, col, [opp, opp, Game.EMPTY]) and captureMove[1] == False:
+                captureMove[0] = (row, col)
+    if captureMove[0] != None:
+        return True, captureMove[0]
+    return False, ()
+
 # Performs the minimax algorithm to a specified depth, and returns the calculated move for the AI.
 def minimax(board, captures, player, node, depth, alpha=(-inf,), beta=(inf,)):
     winner = Game.getWinner(board, captures)
@@ -122,11 +156,20 @@ def minimax(board, captures, player, node, depth, alpha=(-inf,), beta=(inf,)):
         return (minEval[0], node.row, node.col) if not node.root else minEval
 
 # Given a board, captures, and player the play function gets a move from the minimax algorithm for the AI to play and returns it.
-def play(board, captures, player):
-    root = Node(None, None, root=True)
-    DEPTH = 2
-    eval = minimax(board, captures, player, root, DEPTH)
-    return eval[1], eval[2]
+def play(board, captures, player, difficulty=1):
+    if difficulty == 0:
+        return pickRandomMove(board)
+    elif difficulty == 1:
+        canMake, move = canMakeImmediateMove(board, captures, player)
+        if canMake:
+            return move
+        else:
+            return pickRandomMove(board)
+    else:
+        root = Node(None, None, root=True)
+        DEPTH = 2
+        eval = minimax(board, captures, player, root, DEPTH)
+        return eval[1], eval[2]
 
 if __name__ == "__main__":
     pass
