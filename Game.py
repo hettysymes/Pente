@@ -1,9 +1,11 @@
 from copy import deepcopy
 from itertools import product
 
+# Defines an exception that is raised when an error in the game occurs.
 class GameError(Exception):
     pass
 
+# The Game class contains all properties, game constants, and methods required by a game.
 class Game:
 
     P1 = "P1"
@@ -55,6 +57,8 @@ class Game:
     def moveStack(self):
         return self._moveStack
 
+    # The function is given a board, starting coordinate, and pattern. 
+    # The inRow function checks if the pattern is found in the E, SE, S and SW directions from the coordinate.
     @staticmethod
     def inRow(board, row, col, pattern):
         validProducts = Game.getValidProducts([(0,1), (1,1), (1,0), (1,-1)], len(pattern), row, col, len(board))
@@ -64,6 +68,7 @@ class Game:
                 return True
         return False
 
+    # Given a game state and a move to play, the newState function returns the new game state as a result of playing the move.
     @staticmethod
     def newState(board, captures, player, row, col):
         board, captures = deepcopy(board), deepcopy(captures)
@@ -81,6 +86,7 @@ class Game:
                     board[row+i*rc[0]][col+i*rc[1]] = Game.EMPTY
         return board, captures, opponent
 
+    # Given a board and captures, the getWinner function returns the player number who won if there's a winner, or Game.DRAW or Game.ONGOING otherwise.
     @staticmethod
     def getWinner(board, captures):
         for player in [Game.P1, Game.P2]:
@@ -100,6 +106,7 @@ class Game:
             return Game.DRAW
         return Game.ONGOING
 
+    # Given a list of tuples representing directions in which to search for a pattern, returns the valid directions which don't take the search off the board.
     @staticmethod
     def getValidProducts(products, size, row, col, boardsize):
         validProducts = []
@@ -108,10 +115,12 @@ class Game:
                 validProducts.append(rc)
         return validProducts
 
+    # Given a coordinate and a boardsize, returns True if the coordinate is on the board or False otherwise.
     @staticmethod
     def offBoard(row, col, boardsize):
         return not ((0 <= row < boardsize) and (0 <= col < boardsize))
 
+    # Given a coordinate of a potential new move on a board, the validateRowCol function raises a gameError if the move is not valid.
     @staticmethod
     def validateRowCol(row, col, board):
         if Game.offBoard(row, col, len(board)):
@@ -119,11 +128,14 @@ class Game:
         elif board[row][col] != Game.EMPTY:
             raise GameError("Position is not empty")
 
+    # Given a move, the game goes onto its new state by calling the newState function, and updates the winner.
+    # The move and the state of the captures are pushed onto the moveStack.
     def play(self, row, col):
         self.board, self.captures, self.player = Game.newState(self.board, self.captures, self.player, row, col)
         self.winner = Game.getWinner(self.board, self.captures)
         self.moveStack.push(deepcopy(self.captures), row, col)
 
+    # Undoes the last move played.
     def undo(self):
         row, col = self.moveStack.pop()[1:]
         if self.moveStack.isEmpty():
@@ -138,27 +150,33 @@ class Game:
                 self.board[cap[0]][cap[1]] = otherPlayer
         self.board[row][col] = Game.EMPTY
 
+# The MoveStack class is implemented as a stack used to store the captures and moves played in the game.
 class MoveStack:
 
     def __init__(self):
         self._stack = []
 
+    # Returns True if the stack is empty and False otherwise.
     def isEmpty(self):
         return self._stack == []
 
+    # Given a dictionary of captures and a move, the push function pushes this together onto the top of the stack.
     def push(self, captures, row, col):
         self._stack.append((captures, row, col))
 
+    # Removes the top item in the stack and returns it, or raises a game error if the stack is empty.
     def pop(self):
         if self.isEmpty():
             raise GameError("There have been no previous moves")
         return self._stack.pop()
     
+    # Returns the top item in the stack without removing it, or raises a game error if the stack is empty.
     def peek(self):
         if self.isEmpty():
             raise GameError("There have been no previous moves")
         return self._stack[-1]
 
+# The GameRecord class defines the datatype which all game information is stored as in the datatbase.
 class GameRecord:
 
     def __init__(self, id=-1, name=-1, whenSaved=-1, game=-1, mode=-1):

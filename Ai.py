@@ -4,6 +4,7 @@ from math import inf
 from operator import itemgetter
 from itertools import product
 
+# The Node class contains all information needed about a game state used by the minimax algorithm.
 class Node:
 
     def __init__(self, row, col, root=False):
@@ -31,6 +32,7 @@ class Node:
     def addChild(self, row, col):
         self._children.append(Node(row, col))
 
+# Returns the number of rows of pieces of a given length belonging to a certain player on a given board.
 def getNumberOfLines(board, lengths, player):
     boardsize = len(board)
     totals = [0 for _ in range(len(lengths))]
@@ -42,6 +44,7 @@ def getNumberOfLines(board, lengths, player):
                         totals[i] += 1
     return totals
 
+# Returns the value of a game state given the board and captures.
 def getValue(board, captures):
     p1lines = getNumberOfLines(board, [1, 2, 3, 4], Game.P1)
     p2lines = getNumberOfLines(board, [1, 2, 3, 4], Game.P2)
@@ -52,6 +55,7 @@ def getValue(board, captures):
     val += 999999*p1lines[3] - 999999*p2lines[3]
     return val
 
+# Returns the coordinates on the board which are next to an existing piece on the board.
 def getNextTo(board):
     nextTo = set()
     products = list(product([0, 1, -1], repeat=2))
@@ -67,6 +71,7 @@ def getNextTo(board):
                     nextTo.add((row+rc[0], col+rc[1]))
     return list(nextTo)
 
+# Performs the minimax algorithm to a specified depth, and returns the calculated move for the AI.
 def minimax(board, captures, player, node, depth, alpha=(-inf,), beta=(inf,)):
     winner = Game.getWinner(board, captures)
     if winner != Game.ONGOING:
@@ -116,6 +121,7 @@ def minimax(board, captures, player, node, depth, alpha=(-inf,), beta=(inf,)):
                 break
         return (minEval[0], node.row, node.col) if not node.root else minEval
 
+# Given a board, captures, and player the play function gets a move from the minimax algorithm for the AI to play and returns it.
 def play(board, captures, player):
     root = Node(None, None, root=True)
     DEPTH = 2

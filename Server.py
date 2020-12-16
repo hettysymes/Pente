@@ -6,6 +6,10 @@ from Game import Game
 from ServerClientDatatypes import Msg, Cmd
 import random
 
+# The Server class contains all properties and methods required by the server.
+# The server controls the interactions between clients.
+# An instance of the Server class is created on running the Server.py program, and ther server is run.
+# On running the server, the server will not stop running until the program is quitted.
 class Server:
 
     def __init__(self):
@@ -19,6 +23,8 @@ class Server:
     def onlineUsers(self, onlineUsers):
         self._onlineUsers = onlineUsers
 
+    # Runs the server through the 8080 port.
+    # Continuously listens out for client messages, and responds using the handleClient method.
     def run(self):
         print("Server is running...")
         host = socket.gethostname()
@@ -33,6 +39,7 @@ class Server:
             x = threading.Thread(target=self.handleClient, args=(c,))
             x.start()
 
+    # Matches two online users waiting to play together, and sends messages notifying each client of their opponent.
     def getOpponent(self):
         notPlaying = []
         for username, status in self.onlineUsers.items():
@@ -46,6 +53,7 @@ class Server:
             self.onlineUsers[u1][0].send(pickle.dumps(Msg(None, (u2, p1))))
             self.onlineUsers[u2][0].send(pickle.dumps(Msg(None, (u1, p2))))
 
+    # Called when a client message is received, and gives the appropriate response depending on the message.
     def handleClient(self, c):
         while True:
             recvMsg = c.recv(1024)
