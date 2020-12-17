@@ -81,7 +81,7 @@ def pickRandomMove(board):
     return random.choice(emptyCoords)
 
 def canMakeImmediateMove(board, captures, player):
-    captureMove = [None, False]
+    move = [None, 0]
     opp = Game.P1 if player == Game.P2 else Game.P2
     for row in range(len(board)):
         for col in range(len(board)):
@@ -90,19 +90,19 @@ def canMakeImmediateMove(board, captures, player):
             tempBoard, tempCaptures = Game.newState(board, captures, player, row, col)[:-1]
             if Game.getWinner(tempBoard, tempCaptures) == player:
                 return True, (row, col)
-            elif len(tempCaptures[player]) > len(captures[player]):
-                captureMove = [(row, col), True]
+            elif len(tempCaptures[player]) > len(captures[player]) and move[1] < 2:
+                move = [(row, col), 2]
             tempBoard, tempCaptures = Game.newState(board, captures, opp, row, col)[:-1]
-            if Game.getWinner(tempBoard, tempCaptures) == opp:
-                return True, (row, col)
-            elif Game.inRow(tempBoard, row, col, [opp, opp, opp]):
-                return True, (row, col)
-            elif len(tempCaptures[opp]) > len(captures[opp]):
-                captureMove = [(row, col), True]
-            elif Game.inRow(board, row, col, [opp, opp, Game.EMPTY]) and captureMove[1] == False:
-                captureMove[0] = (row, col)
-    if captureMove[0] != None:
-        return True, captureMove[0]
+            if Game.getWinner(tempBoard, tempCaptures) == opp and move[1] < 4:
+                move = [(row, col), 4]
+            elif Game.inRow(tempBoard, row, col, [opp, opp, opp]) and move[1] < 3:
+                move = [(row, col), 3]
+            elif len(tempCaptures[opp]) > len(captures[opp]) and move[1] < 2:
+                move = [(row, col), 2]
+            elif Game.inRow(board, row, col, [opp, opp, Game.EMPTY]) and move[1] < 1:
+                move = [(row, col), 1]
+    if move[0] != None:
+        return True, move[0]
     return False, ()
 
 # Performs the minimax algorithm to a specified depth, and returns the calculated move for the AI.
