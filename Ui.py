@@ -928,15 +928,15 @@ class Terminal(Ui):
                 return
 
     # Given a board and the captured pieces, the printState function returns a string defining how the board and captures are to be displayed on the screen.
-    def printState(self, board, captures):
-        boardsize = len(board)
+    def printState(self):
+        boardsize = len(self.currGameRecord.game.board)
         boardString = "Board:\n\n"
         boardString += "   " + " ".join([chr(65+i) for i in range(boardsize)]) + "\n"
         for row in range(boardsize):
             space = " " if row+1 < 10 else ""
             boardString += space + str(row+1) + " "
             for col in range(boardsize):
-                piece = board[row][col]
+                piece = self.currGameRecord.game.board[row][col]
                 if piece == Game.EMPTY:
                     boardString += "+"
                 elif piece == Game.P1:
@@ -946,12 +946,12 @@ class Terminal(Ui):
                 if col < boardsize-1:
                     boardString += "-"
             boardString += "\n"
-        boardString += f"\nPlayer 1 captured pairs: {len(captures[Game.P1])}\n"
-        boardString += f"Player 2 captured pairs: {len(captures[Game.P2])}\n"
+        boardString += f"\nPlayer 1 captured pairs: {len(self.currGameRecord.game.captures[Game.P1])}\n"
+        boardString += f"Player 2 captured pairs: {len(self.currGameRecord.game.captures[Game.P2])}\n"
         print(boardString)
 
     # Given a move, checks if the move is valid. If it is valid it will return the move, otherwise it will raise an error.
-    def getRowCol(self, move, board):
+    def getRowCol(self, move):
         if len(move) == 0:
             raise GameError("No move played")
         row, col = move[:-1], move[-1]
@@ -966,15 +966,15 @@ class Terminal(Ui):
         row -= 1
         col = ord(col)-65
         try:
-            Game.validateRowCol(row, col, board)
+            Game.validateRowCol(row, col, self.currGameRecord.game.board)
         except GameError:
             raise GameError("Invalid move")
         else:
             return row, col
 
     # Given a game to save, the saveGame function saves the game to the database by calling the database's own saveGame function.
-    def saveGame(self, game):
-        self.currGameRecord.whenSaved, self.currGameRecord.game = datetime.now(), game
+    def saveGame(self):
+        self.currGameRecord.whenSaved = datetime.now()
         if self.currGameRecord.id != -1:
             Database.updateGame(self.currGameRecord)
         else:
@@ -1008,7 +1008,7 @@ class Terminal(Ui):
 
     # Called when a non-move choice is entered by the user whilst playing a game: one of s (save) and u (undo).
     # The choice is then processed by the processChoice function given the choice and the game being played.
-    def processChoice(self, choice, game):
+    def processChoice(self, choice):
         if choice == "s":
             nonGuests = [player for player in [self.player, self.opponent] if player != Player.GUEST and player != Player.COMP]
             if nonGuests:
@@ -1018,20 +1018,19 @@ class Terminal(Ui):
                         playerString = f"{nonGuests[0]}'s account"
                     yes = self.getYesNo(f"Would you like to save your game to {playerString}? (y/n) ")
                     if yes:
-                        self.saveGame(game)
+                        self.saveGame()
             else:
                 print("Save not available")
         elif choice == "u":
             try:
-                game.undo()
+                self.currGameRecord.game.undo()
             except GameError as e:
                 print(f"Error: {e}")
             else:
-                self.printState(game.board, game.captures)
-        return game
+                self.printState()
 
     # Called to get a choice or a move from the user whilst playing the game. This is then returned from the function.
-    def getMove(self, board):
+    def getMove(self):
         while 1:
             choice = input("Enter move: ")
             if choice == "q":
@@ -1042,7 +1041,7 @@ class Terminal(Ui):
                 return choice, False, False
             else:
                 try:
-                    row, col = self.getRowCol(choice, board)
+                    row, col = self.getRowCol(choice)
                     return (row, col), True, False
                 except GameError as err:
                     print(f"Error: {err}. Try again.")
@@ -1050,17 +1049,16 @@ class Terminal(Ui):
     # Performs a loop which asks for moves from the user and the opponent until either the game ends or the user quits.
     # After each move the new board state is displayed on the screen.
     def play(self):
-        game = self.currGameRecord.game
         print("\nTo enter a move, enter the row followed by the column e.g. 1A or 1a.")
         print("Other than entering a move you can type q to quit, s to save, and u to undo.\n")
-        while game.winner == Game.ONGOING:
-            self.printState(game.board, game.captures)
-            playerStr = "Player 1 to play" if game.player == Game.P1 else "Player 2 to play"
+        while self.currGameRecord.game.winner == Game.ONGOING:
+            self.printState()
+            playerStr = "Player 1 to play" if self.currGameRecord.game.player == Game.P1 else "Player 2 to play"
             print(playerStr)
-            if self.getUsernameOfPlayerNumber(game.player) == Player.COMP:
-                row, col = Ai.play(game.board, game.captures, game.player)
-                game.play(row, col)
-            elif self.currGameRecord.mode == Mode.LAN and self.currPlayers[game.player] != Player.MAIN:
+            if self.getUsernameOfPlayerNumber(self.currGameRecord.game.player) == Player.COMP:
+                row, col = Ai.play(self.currGameRecord.game.board, self.currGameRecord.game.captures, self.currGameRecord.game.player)
+                self.currGameRecord.game.play(row, col)
+            elif self.currGameRecord.mode == Mode.LAN and self.currPlayers[self.currGameRecord.game.player] != Player.MAIN:
                 print(f"Waiting for {self.client.opponent} to play...")
                 row, col = self.client.getMove()
                 if (row, col) == (-1, -1):
@@ -1069,24 +1067,24 @@ class Terminal(Ui):
                     input()
                     return
                 else:
-                    game.play(row, col)
+                    self.currGameRecord.game.play(row, col)
                     print(f"{self.client.opponent} played: {row+1}{chr(col+65)}")
             else:
-                choice, isMove, end = self.getMove(game.board)
+                choice, isMove, end = self.getMove()
                 if not isMove:
-                    game = self.processChoice(choice, game)
+                    self.processChoice(choice)
                     if end:
                         if self.currGameRecord.mode == Mode.LAN:
                             self.client.closeConnection()
                         return
                 else:
                     row, col = choice
-                    game.play(row, col)
+                    self.currGameRecord.game.play(row, col)
                     if self.currGameRecord.mode == Mode.LAN: self.client.makeMove((row, col))
-        self.printState(game.board, game.captures)
-        if game.winner == Game.P1:
+        self.printState()
+        if self.currGameRecord.game.winner == Game.P1:
             print("Player 1 has won!")
-        elif game.winner == Game.P2:
+        elif self.currGameRecord.game.winner == Game.P2:
             print("Player 2 has won!")
         else:
             print("It is a draw.")
