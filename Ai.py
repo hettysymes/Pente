@@ -195,10 +195,10 @@ def minimax(board, captures, player, node, depth, alpha=(-inf,), beta=(inf,), mo
         return (minEval[0], node.row, node.col) if not node.root else minEval
 
 # Given a board, captures, and player the play function gets a move from the minimax algorithm for the AI to play and returns it.
-def play(board, captures, player, difficulty=2):
-    if difficulty == 0:
+def play(board, captures, player, difficulty):
+    if difficulty == 1:
         return pickRandomMove(board)
-    elif difficulty == 1:
+    elif difficulty == 2:
         canMake, move = getImmediateMove(board, captures, player)
         if canMake:
             return move

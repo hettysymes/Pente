@@ -36,6 +36,7 @@ class Ui:
         self._currPlayers = {Game.P1: Player.MAIN, Game.P2: Player.OPP}
         self._currGameRecord = None
         self._client = None
+        self._compDifficulty = None
 
     @property
     def player(self):
@@ -76,6 +77,14 @@ class Ui:
     @client.setter
     def client(self, client):
         self._client = client
+
+    @property
+    def compDifficulty(self):
+        return self._compDifficulty
+
+    @compDifficulty.setter
+    def compDifficulty(self, compDifficulty):
+        self._compDifficulty = compDifficulty
 
     # Given a player (one of Game.P1 and Game.P2), the function returns the username of that player number (or Player.GUEST if the player is not logged in, or Player.COMP if the player is a computer).
     def getUsernameOfPlayerNumber(self, player):
@@ -244,7 +253,7 @@ class Gui(Ui):
         playGameWindow.title("Play")
         Label(playGameWindow, text="Choose a game mode").grid(row=0, column=0, padx=10, pady=5)
         Button(playGameWindow, text="Player v.s. Player", command=partial(self.confirmOppLogin, playGameWindow)).grid(row=1, column=0, padx=5)
-        Button(playGameWindow, text="Player v.s. Computer", command=partial(self.choosePlayer, playGameWindow, Mode.COMP)).grid(row=2, column=0, padx=5)     
+        Button(playGameWindow, text="Player v.s. Computer", command=partial(self.getComputerDifficulty, playGameWindow)).grid(row=2, column=0, padx=5)     
         if self.player != Player.GUEST:
             Button(playGameWindow, text="Player v.s. Player (LAN)", command=partial(self.connectLan, playGameWindow)).grid(row=3, column=0, padx=5)
 
@@ -255,15 +264,27 @@ class Gui(Ui):
         Button(playGameWindow, text="Yes", command=partial(self.createLoginWindow, Player.OPP, playGameWindow)).grid(row=1, column=0, padx=5)
         Button(playGameWindow, text="No", command=partial(self.choosePlayer, playGameWindow, Mode.PVP)).grid(row=1, column=1, padx=5)
 
+    def getComputerDifficulty(self, playGameWindow):
+        getDifficultyWindow = Toplevel(playGameWindow)
+        getDifficultyWindow.title("Choose difficulty")
+        Label(getDifficultyWindow, text="Choose the computer difficulty").grid(row=0, column=0, padx=10, pady=5)
+        Button(getDifficultyWindow, text="Easy", command=partial(self.setComputerDifficulty, playGameWindow, 1)).grid(row=1, column=0, padx=5)
+        Button(getDifficultyWindow, text="Medium", command=partial(self.setComputerDifficulty, playGameWindow, 2)).grid(row=2, column=0, padx=5)
+        Button(getDifficultyWindow, text="Hard", command=partial(self.setComputerDifficulty, playGameWindow, 3)).grid(row=3, column=0, padx=5)
+
+    def setComputerDifficulty(self, playGameWindow, difficulty):
+        self.compDifficulty = difficulty
+        self.choosePlayer(playGameWindow, Mode.COMP)
+
     # Creates a window that allows the player to choose whether they play as player 1 or player 2.
     def choosePlayer(self, playGameWindow, mode):
-        playGameWindow.destroy()
         if mode == Mode.COMP:
             self.opponent = Player.COMP
         if (self.player == Player.GUEST) and (self.opponent == Player.GUEST):
+            playGameWindow.destroy()
             self.playGame(Game.P1, mode)
         else:
-            choosePlayerWindow = Toplevel(self.root)
+            choosePlayerWindow = Toplevel(playGameWindow)
             choosePlayerWindow.title("Choose player")
             if mode == Mode.COMP:
                 txt = "Would you like to be player 1 or player 2?"
@@ -274,12 +295,12 @@ class Gui(Ui):
                     player = self.player
                 txt = f"Would {player} like to be player 1 or player 2?"
             Label(choosePlayerWindow, text=txt).grid(row=0, column=0, columnspan=2, padx=10, pady=5)
-            Button(choosePlayerWindow, text="Player 1", command=partial(self.playNewGame, choosePlayerWindow, Game.P1, mode)).grid(row=1, column=0, padx=5)
-            Button(choosePlayerWindow, text="Player 2", command=partial(self.playNewGame, choosePlayerWindow, Game.P2, mode)).grid(row=1, column=1, padx=5)
+            Button(choosePlayerWindow, text="Player 1", command=partial(self.playNewGame, playGameWindow, Game.P1, mode)).grid(row=1, column=0, padx=5)
+            Button(choosePlayerWindow, text="Player 2", command=partial(self.playNewGame, playGameWindow, Game.P2, mode)).grid(row=1, column=1, padx=5)
 
     # Destroys the choose player window and calls the playGame function to start the game.
-    def playNewGame(self, choosePlayerWindow, player, mode):
-        choosePlayerWindow.destroy()
+    def playNewGame(self, playGameWindow, player, mode):
+        playGameWindow.destroy()
         self.playGame(player, mode)
 
     # Creates a window providing the user the option to choose a saved game to load.
@@ -596,7 +617,7 @@ class Gui(Ui):
 
     # Gets a move from the AI and plays it on the board.
     def playComputer(self):
-        row, col = Ai.play(self.currGameRecord.game.board, self.currGameRecord.game.captures, self.currGameRecord.game.player)
+        row, col = Ai.play(self.currGameRecord.game.board, self.currGameRecord.game.captures, self.currGameRecord.game.player, self.compDifficulty)
         self.play(row, col)
         self.updateState()             
 
@@ -813,6 +834,14 @@ class Terminal(Ui):
                     self.login(Player.OPP)
             elif mode == Mode.COMP:
                 self.opponent = Player.COMP
+                menu = """
+                Select difficulty level:
+                1. Easy
+                2. Medium
+                3. Hard
+                """
+                print(menu)
+                self.compDifficulty = self.getChoice(1, 3)
             player = self.choosePlayer()
         otherPlayer = Game.P2 if player == Game.P1 else Game.P1
         self.currPlayers[player] = Player.MAIN
@@ -1056,7 +1085,7 @@ class Terminal(Ui):
             playerStr = "Player 1 to play" if self.currGameRecord.game.player == Game.P1 else "Player 2 to play"
             print(playerStr)
             if self.getUsernameOfPlayerNumber(self.currGameRecord.game.player) == Player.COMP:
-                row, col = Ai.play(self.currGameRecord.game.board, self.currGameRecord.game.captures, self.currGameRecord.game.player)
+                row, col = Ai.play(self.currGameRecord.game.board, self.currGameRecord.game.captures, self.currGameRecord.game.player, self.compDifficulty)
                 self.currGameRecord.game.play(row, col)
             elif self.currGameRecord.mode == Mode.LAN and self.currPlayers[self.currGameRecord.game.player] != Player.MAIN:
                 print(f"Waiting for {self.client.opponent} to play...")
