@@ -143,7 +143,7 @@ class Gui(Ui):
         self._headLabel = Label(self.gameFrame, bg="white", fg="black", font=("Helvetica", 18))
         self._headLabel.grid(row=0, column=0, sticky="NESW")
 
-        self.playerNoPlayingLabel = None
+        self._playerNoPlayingLabel = None
 
         self._c = Canvas()
         self._p1CapLabel = Label(self.gameFrame, relief="ridge", font=("Helvetica", 18))
@@ -151,9 +151,9 @@ class Gui(Ui):
         self._p2CapLabel = Label(self.gameFrame, relief="ridge", font=("Helvetica", 18))
         self._p2CapLabel.grid(row=3, column=0, sticky="NESW")
 
+        self.updateOptionFrame()
         self.updateMenuFrame()
         self.updateGameFrame()
-        self.updateOptionFrame()
 
     @property
     def MAX_CANVAS_SIZE(self):
@@ -246,6 +246,14 @@ class Gui(Ui):
     @p2CapLabel.setter
     def p2CapLabel(self, p2CapLabel):
         self._p2CapLabel = p2CapLabel
+
+    @property
+    def playerNoPlayingLabel(self):
+        return self._playerNoPlayingLabel
+
+    @playerNoPlayingLabel.setter
+    def playerNoPlayingLabel(self, playerNoPlayingLabel):
+        self._playerNoPlayingLabel = playerNoPlayingLabel
 
     # Creates a window that allows the user to choose which game mode to play.
     def chooseGameMode(self):
@@ -431,23 +439,29 @@ class Gui(Ui):
 
     # Undoes the last move in the currently being played game, and displays an error if not possible.
     def undo(self):
-        try:
-            self.currGameRecord.game.undo()
-        except GameError as e:
-            self.headLabel.config(text=f"Error: {e}.")
-            self.root.after(1500, self.updateHeadLabel)
+        if self.currGameRecord.mode == Mode.PVP:
+            try:
+                self.currGameRecord.game.undo()
+            except GameError as e:
+                self.headLabel.config(text=f"Error: {e}.")
+                self.root.after(1500, self.updateHeadLabel)
+            else:
+                self.updateState()
         else:
-            self.updateState()
+            try:
+                self.currGameRecord.game.undo()
+                self.currGameRecord.game.undo()
+            except GameError as e:
+                self.headLabel.config(text=f"Error: {e}.")
+                self.root.after(1500, self.updateHeadLabel)
+            else:
+                self.updateState()
 
     # Updates how the option frame is displayed (the right-most frame in the GUI) depending on the current state of the game being played.
     def updateOptionFrame(self):
         for widget in self.optionFrame.winfo_children(): widget.destroy()
         if self.playing:
-            if self.currGameRecord.game.player == Game.P1:
-                num = 1
-            else:
-                num = 2
-            self.playerNoPlayingLabel = Label(self.optionFrame, text=f"Player {num} to play")
+            self.playerNoPlayingLabel = Label(self.optionFrame)
             self.playerNoPlayingLabel.grid(row=0, column=0, padx=10, pady=5)
             Button(self.optionFrame, text="Undo", command=self.undo).grid(row=1, column=0, padx=10, pady=5)
             Button(self.optionFrame, text="Quit game", command=self.confirmQuit).grid(row=2, column=0, padx=10, pady=5)
@@ -568,8 +582,8 @@ class Gui(Ui):
         canvasSize = self.MAX_CANVAS_SIZE - (self.MAX_CANVAS_SIZE%gridsize)
         squareSize = canvasSize//(gridsize+1)
         self.createImages(squareSize)
-        self.updateGameFrame(squareSize, canvasSize, gridsize)
         self.updateOptionFrame()
+        self.updateGameFrame(squareSize, canvasSize, gridsize)
         if self.getUsernameOfPlayerNumber(self.currGameRecord.game.player) == Player.COMP:
             self.playComputer()
         elif self.currGameRecord.mode == Mode.LAN and self.currPlayers[self.currGameRecord.game.player] == Player.OPP:
@@ -672,6 +686,11 @@ class Gui(Ui):
                 self.updateCell(row, col, self.currGameRecord.game.board[row][col])
         self.currentBoard = deepcopy(self.currGameRecord.game.board)
 
+        if self.currGameRecord.game.player == Game.P1:
+            self.playerNoPlayingLabel.config(text="Player 1 to play")
+        else:
+            self.playerNoPlayingLabel.config(text="Player 2 to play")
+
     # Updates the image displayed for a single board cell given its position and the piece it should hold.
     def updateCell(self, row, col, piece):
         if piece == Game.EMPTY:
@@ -726,13 +745,8 @@ class Gui(Ui):
     def play(self, row, col):
         self.currGameRecord.game.play(row, col)
         if self.currGameRecord.game.winner != Game.ONGOING:
-            self.playerNoPlayingLabel.config(text="Game ended")
             self.displayWin()
             self.playing = False
-        elif self.currGameRecord.game.player == Game.P1:
-            self.playerNoPlayingLabel.config(text="Player 1 to play")
-        else:
-            self.playerNoPlayingLabel.config(text="Player 2 to play")
 
     # Called when starting a Player v.s. Player LAN game.
     # Makes a connection between the client and server and gets an opponent using the client's methods.
@@ -825,9 +839,9 @@ class Terminal(Ui):
             if mode == Mode.PVP:
                 self.opponent = Player.GUEST
                 menu = """
-                The other player will:
-                1. Play as a guest
-                2. Login
+            The other player will:
+            1. Play as a guest
+            2. Login
                 """
                 print(menu)
                 if self.getChoice(1, 2) == 2:
@@ -835,10 +849,10 @@ class Terminal(Ui):
             elif mode == Mode.COMP:
                 self.opponent = Player.COMP
                 menu = """
-                Select difficulty level:
-                1. Easy
-                2. Medium
-                3. Hard
+            Select difficulty level:
+            1. Easy
+            2. Medium
+            3. Hard
                 """
                 print(menu)
                 self.compDifficulty = self.getChoice(1, 3)
@@ -1051,12 +1065,21 @@ class Terminal(Ui):
             else:
                 print("Save not available")
         elif choice == "u":
-            try:
-                self.currGameRecord.game.undo()
-            except GameError as e:
-                print(f"Error: {e}")
+            if self.currGameRecord.mode == Mode.PVP:
+                try:
+                    self.currGameRecord.game.undo()
+                except GameError as e:
+                    print(f"Error: {e}")
+                else:
+                    self.printState()
             else:
-                self.printState()
+                try:
+                    self.currGameRecord.game.undo()
+                    self.currGameRecord.game.undo()
+                except GameError as e:
+                    print(f"Error: {e}")
+                else:
+                    self.printState()
 
     # Called to get a choice or a move from the user whilst playing the game. This is then returned from the function.
     def getMove(self):
