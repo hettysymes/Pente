@@ -112,7 +112,7 @@ class Ui:
             status = "Draw"
         else:
             status = "ONGOING"
-        return f"{gameRecord.name:25s}{mode:25s}saved on {whenSaved:25s}status: {status}"
+        return f"{gameRecord.name} - mode: {mode}, saved on: {whenSaved}, status: {status}"
 
     def run(self):
         raise NotImplementedError
@@ -465,20 +465,27 @@ class Gui(Ui):
             Button(self.optionFrame, text="Quit game", command=self.confirmQuit).grid(row=2, column=0, padx=10, pady=5)
             if self.currGameRecord.mode != Mode.PVP:
                 if self.currPlayers[Game.P1] == Player.MAIN:
-                    Label(self.optionFrame, text="YOU ARE PLAYER 1").grid(row=3, column=0, padx=10, pady=5)
+                    Label(self.optionFrame, text="YOU ARE PLAYER 1").grid(row=4, column=0, padx=10, pady=5)
                 else:
-                    Label(self.optionFrame, text="YOU ARE PLAYER 2").grid(row=3, column=0, padx=10, pady=5)
+                    Label(self.optionFrame, text="YOU ARE PLAYER 2").grid(row=4, column=0, padx=10, pady=5)
             if self.player != Player.GUEST or (self.opponent not in [Player.GUEST, Player.COMP]):
                 if self.currGameRecord.id == -1:
                     command = self.createSaveGameWindow
                 else:
                     self.currGameRecord.whenSaved = datetime.now()
-                    command = lambda: Database.updateGame(self.currGameRecord)
+                    command = self.createSavedGameConfirmationWindow
                 if self.currGameRecord.mode != Mode.LAN:
-                    Button(self.optionFrame, text="Save game", command=command).grid(row=2, column=0, padx=10, pady=5)
+                    Button(self.optionFrame, text="Save game", command=command).grid(row=3, column=0, padx=10, pady=5)
         else:
             Label(self.optionFrame, text="Start playing?").grid(row=0, column=0, padx=10, pady=5)
 
+    def createSavedGameConfirmationWindow(self):
+        Database.updateGame(self.currGameRecord)
+        notifySavedGameWindow = Toplevel(self.root)
+        notifySavedGameWindow.title("Game saved")
+        Label(notifySavedGameWindow, text="Your game has been saved").grid(row=0, column=0, padx=10, pady=5)
+        Button(notifySavedGameWindow, text="Ok", command=notifySavedGameWindow.destroy).grid(row=1, column=0, padx=10, pady=5)
+    
     # Updates how the menu frame is displayed (the left-most frame in the GUI) depending on whether the user is logged in or not.
     def updateMenuFrame(self):
         for widget in self.menuFrame.winfo_children(): widget.destroy()
