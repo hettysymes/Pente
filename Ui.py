@@ -273,12 +273,11 @@ class Gui(Ui):
         Button(playGameWindow, text="No", command=partial(self.choosePlayer, playGameWindow, Mode.PVP)).grid(row=1, column=1, padx=5)
 
     def getComputerDifficulty(self, playGameWindow):
-        getDifficultyWindow = Toplevel(playGameWindow)
-        getDifficultyWindow.title("Choose difficulty")
-        Label(getDifficultyWindow, text="Choose the computer difficulty").grid(row=0, column=0, padx=10, pady=5)
-        Button(getDifficultyWindow, text="Easy", command=partial(self.setComputerDifficulty, playGameWindow, 1)).grid(row=1, column=0, padx=5)
-        Button(getDifficultyWindow, text="Medium", command=partial(self.setComputerDifficulty, playGameWindow, 2)).grid(row=2, column=0, padx=5)
-        Button(getDifficultyWindow, text="Hard", command=partial(self.setComputerDifficulty, playGameWindow, 3)).grid(row=3, column=0, padx=5)
+        for widget in playGameWindow.winfo_children(): widget.destroy()
+        Label(playGameWindow, text="Choose the computer difficulty").grid(row=0, column=0, padx=10, pady=5)
+        Button(playGameWindow, text="Easy", command=partial(self.setComputerDifficulty, playGameWindow, 1)).grid(row=1, column=0, padx=5)
+        Button(playGameWindow, text="Medium", command=partial(self.setComputerDifficulty, playGameWindow, 2)).grid(row=2, column=0, padx=5)
+        Button(playGameWindow, text="Hard", command=partial(self.setComputerDifficulty, playGameWindow, 3)).grid(row=3, column=0, padx=5)
 
     def setComputerDifficulty(self, playGameWindow, difficulty):
         self.compDifficulty = difficulty
@@ -292,8 +291,7 @@ class Gui(Ui):
             playGameWindow.destroy()
             self.playGame(Game.P1, mode)
         else:
-            choosePlayerWindow = Toplevel(playGameWindow)
-            choosePlayerWindow.title("Choose player")
+            for widget in playGameWindow.winfo_children(): widget.destroy()
             if mode == Mode.COMP:
                 txt = "Would you like to be player 1 or player 2?"
             else:
@@ -302,9 +300,9 @@ class Gui(Ui):
                 else:
                     player = self.player
                 txt = f"Would {player} like to be player 1 or player 2?"
-            Label(choosePlayerWindow, text=txt).grid(row=0, column=0, columnspan=2, padx=10, pady=5)
-            Button(choosePlayerWindow, text="Player 1", command=partial(self.playNewGame, playGameWindow, Game.P1, mode)).grid(row=1, column=0, padx=5)
-            Button(choosePlayerWindow, text="Player 2", command=partial(self.playNewGame, playGameWindow, Game.P2, mode)).grid(row=1, column=1, padx=5)
+            Label(playGameWindow, text=txt).grid(row=0, column=0, columnspan=2, padx=10, pady=5)
+            Button(playGameWindow, text="Player 1", command=partial(self.playNewGame, playGameWindow, Game.P1, mode)).grid(row=1, column=0, padx=5)
+            Button(playGameWindow, text="Player 2", command=partial(self.playNewGame, playGameWindow, Game.P2, mode)).grid(row=1, column=1, padx=5)
 
     # Destroys the choose player window and calls the playGame function to start the game.
     def playNewGame(self, playGameWindow, player, mode):
