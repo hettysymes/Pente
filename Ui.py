@@ -112,7 +112,7 @@ class Ui:
             status = "Draw"
         else:
             status = "ONGOING"
-        return f"{gameRecord.name} - mode: {mode}, saved on: {whenSaved}, status: {status}"
+        return f"{gameRecord.name} - players: {mode}, saved on: {whenSaved}, status: {status}"
 
     def run(self):
         raise NotImplementedError
@@ -310,7 +310,8 @@ class Gui(Ui):
         self.playGame(player, mode)
 
     # Creates a window providing the user the option to choose a saved game to load.
-    def createLoadGameWindow(self):
+    def createLoadGameWindow(self, viewGamesWindow):
+        viewGamesWindow.destroy()
         loadGameWindow = Toplevel(self.root)
         loadGameWindow.title("Load game")
         games = Database.loadGames(self.player, Game.ONGOING)
@@ -324,11 +325,10 @@ class Gui(Ui):
             comboBox = ttk.Combobox(loadGameWindow, values=values, width=100)
             comboBox.current(0)
             comboBox.grid(row=1, column=0, padx=10, pady=5)
-            Button(loadGameWindow, text="Load game", command=partial(self.loadGame, loadGameWindow, comboBox.get())).grid(row=2, column=0, padx=10, pady=5)
+            Button(loadGameWindow, text="Load game", command=partial(self.loadGame, loadGameWindow, comboBox.get(), games)).grid(row=2, column=0, padx=10, pady=5)
 
     # Given the game information of the game being loaded, accesses the database for the game record of the game being loaded by calling the database's loadGames function, and calls the playGame function to start the game.
-    def loadGame(self, loadGameWindow, gameInfo):
-        games = Database.loadGames(self.player, Game.ONGOING)
+    def loadGame(self, loadGameWindow, gameInfo, games):
         for gameRecord in games:
             if self.gameString(gameRecord) == gameInfo:
                 break
@@ -497,8 +497,44 @@ class Gui(Ui):
         else:
             Label(self.menuFrame, text=f"Welcome {self.player} to Pente!").grid(row=0, column=0, padx=10, pady=5)
             Button(self.menuFrame, text="Play new game", command=self.chooseGameMode).grid(row=1, column=0, padx=10, pady=5)
-            Button(self.menuFrame, text="Load game", command=self.createLoadGameWindow).grid(row=2, column=0, padx=10, pady=5)
+            Button(self.menuFrame, text="View games", command=self.createViewGamesWindow).grid(row=2, column=0, padx=10, pady=5)
             Button(self.menuFrame, text="Logout", command=self.logout).grid(row=3, column=0, padx=10, pady=5)
+    
+    def createViewGamesWindow(self):
+        viewGamesWindow = Toplevel(self.root)
+        games = Database.loadAllGames(self.player)
+        if not games:
+            Label(viewGamesWindow, text="There are no games to view.").grid(row=0, column=0, padx=10, pady=5)
+            Button(viewGamesWindow, text="Ok", command=viewGamesWindow.destroy).grid(row=1, column=0, padx=10, pady=5)
+        else:
+            Label(viewGamesWindow, text="Saved games:").grid(row=0, column=0, columnspan=3, padx=10, pady=5)
+            for i, gameRecord in enumerate(games):
+                Label(viewGamesWindow, text=f"{i+1}. {self.gameString(gameRecord)}").grid(row=i+1, column=0, columnspan=3, padx=10, pady=5)
+            Button(viewGamesWindow, text="Load game", command=partial(self.createLoadGameWindow, viewGamesWindow)).grid(row=i+2, column=0, padx=10, pady=5)
+            Button(viewGamesWindow, text="Delete game", command=partial(self.createDeleteGameWindow, viewGamesWindow, games)).grid(row=i+2, column=1, padx=10, pady=5)
+            Button(viewGamesWindow, text="Go back", command=viewGamesWindow.destroy).grid(row=i+2, column=2, padx=10, pady=5)
+
+    def createDeleteGameWindow(self, viewGamesWindow, games):
+        viewGamesWindow.destroy()
+        deleteGameWindow = Toplevel(self.root)
+        deleteGameWindow.title("Delete game")
+        Label(deleteGameWindow, text="Select a game:").grid(row=0, column=0, padx=10, pady=5)
+        values = []
+        for gameRecord in games:
+            values.append(self.gameString(gameRecord))
+        comboBox = ttk.Combobox(deleteGameWindow, values=values, width=100)
+        comboBox.current(0)
+        comboBox.grid(row=1, column=0, padx=10, pady=5)
+        Button(deleteGameWindow, text="Delete game", command=partial(self.deleteGame, deleteGameWindow, comboBox.get(), games)).grid(row=2, column=0, padx=10, pady=5)
+
+    def deleteGame(self, deleteGameWindow, gameInfo, games):
+        for gameRecord in games:
+            if self.gameString(gameRecord) == gameInfo:
+                break
+        Database.deleteGame(gameRecord.id)
+        for widget in deleteGameWindow.winfo_children(): widget.destroy()
+        Label(deleteGameWindow, text=f"Game {gameRecord.name} successfully deleted.").grid(row=0, column=0, padx=10, pady=5)
+        Button(deleteGameWindow, text="Ok", command=deleteGameWindow.destroy).grid(row=1, column=0, padx=10, pady=5)
 
     # Creates a window asking for the user's confirmation to quit the currently being played game.
     def confirmQuit(self):
