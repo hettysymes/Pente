@@ -498,10 +498,27 @@ class Gui(Ui):
             Label(self.menuFrame, text=f"Welcome {self.player} to Pente!").grid(row=0, column=0, padx=10, pady=5)
             Button(self.menuFrame, text="Play new game", command=self.chooseGameMode).grid(row=1, column=0, padx=10, pady=5)
             Button(self.menuFrame, text="View games", command=self.createViewGamesWindow).grid(row=2, column=0, padx=10, pady=5)
-            Button(self.menuFrame, text="Logout", command=self.logout).grid(row=3, column=0, padx=10, pady=5)
+            Button(self.menuFrame, text="View profile", command=self.createViewProfileWindow).grid(row=3, column=0, padx=10, pady=5)
+            Button(self.menuFrame, text="Logout", command=self.logout).grid(row=4, column=0, padx=10, pady=5)
+
+    def createViewProfileWindow(self):
+        viewProfileWindow = Toplevel(self.root)
+        viewProfileWindow.title("View profile")
+        numberOfWins, numberOfLosses, numberOfDraws, numberOfOngoings = Database.getNumberOfGamesForEachResult(self.player)
+        totalNumberOfGames = sum([numberOfWins, numberOfLosses, numberOfDraws, numberOfOngoings])
+        whenSaved = Database.getPlayer(self.player)[0]
+        Label(viewProfileWindow, text=f"{self.player}'s profile:").grid(row=0, column=0, padx=10, pady=10)
+        Label(viewProfileWindow, text=f"Number of saved games: {totalNumberOfGames}").grid(row=1, column=0, padx=10, pady=5)
+        Label(viewProfileWindow, text=f"Number of won games: {numberOfWins}").grid(row=2, column=0, padx=10, pady=5)
+        Label(viewProfileWindow, text=f"Number of lost games: {numberOfLosses}").grid(row=3, column=0, padx=10, pady=5)
+        Label(viewProfileWindow, text=f"Number of drawn games: {numberOfDraws}").grid(row=4, column=0, padx=10, pady=5)
+        Label(viewProfileWindow, text=f"Number of ongoing games: {numberOfOngoings}").grid(row=5, column=0, padx=10, pady=5)
+        Label(viewProfileWindow, text=f"Profile created on {datetime.strftime(whenSaved, '%d/%m/%Y, %H:%M:%S')}").grid(row=6, column=0, padx=10, pady=10)
+        Button(viewProfileWindow, text="Ok", command=viewProfileWindow.destroy).grid(row=7, column=0, padx=10, pady=5)
     
     def createViewGamesWindow(self):
         viewGamesWindow = Toplevel(self.root)
+        viewGamesWindow.title("View games")
         games = Database.loadAllGames(self.player)
         if not games:
             Label(viewGamesWindow, text="There are no games to view.").grid(row=0, column=0, padx=10, pady=5)
@@ -948,7 +965,7 @@ class Terminal(Ui):
         profileString = f"""
             {self.player}'s profile:
 
-            Number of played games: {totalNumberOfGames}
+            Number of saved games: {totalNumberOfGames}
             Number of won games: {numberOfWins}
             Number of lost games: {numberOfLosses}
             Number of drawn games: {numberOfDraws}
