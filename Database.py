@@ -157,6 +157,7 @@ def getPlayer(username):
     WHERE username = ?;
     """
     [whenSaved] = getRecords(recordSQL, (username,))[0]
+    whenSaved = datetime.strptime(whenSaved, "%d/%m/%Y, %H:%M:%S")
     return [whenSaved]
 
 # Given a username, the function returns if there are any existing Player entries in the Player table with that username.
@@ -214,6 +215,23 @@ def parseGames(games):
         parsedGames.append(gameRecord)
     return parsedGames
 
+def getNumberOfGamesForEachResult(username):
+    gamesP1Won = loadGames(username, Game.P1)
+    gamesP2Won = loadGames(username, Game.P2)
+    numberOfWins, numberOfLosses = 0, 0
+    numberOfOngoings, numberOfDraws = len(loadGames(username, Game.ONGOING)), len(loadGames(username, Game.DRAW))
+    for game in gamesP1Won:
+        if getPlayerGameUsername(game.id, Game.P1) == username:
+            numberOfWins += 1
+        else:
+            numberOfLosses += 1
+    for game in gamesP2Won:
+        if getPlayerGameUsername(game.id, Game.P2) == username:
+            numberOfWins += 1
+        else:
+            numberOfLosses += 1
+    return numberOfWins, numberOfLosses, numberOfDraws, numberOfOngoings
+        
 # Given a username and a winner, the function returns all games which were played by the player with the username and had the specified winner.
 def loadGames(username, winner):
     recordSQL = """

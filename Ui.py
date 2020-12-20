@@ -907,7 +907,7 @@ class Terminal(Ui):
     # The user's choice is used to call a relevant function to deal with the user's request.
     def displayMenu(self):
         guestMethods = {1: self.playGame, 2: lambda: self.login(Player.MAIN), 3: self.createAccount, 4: quit}
-        memberMethods = {1: self.playGame, 2: self.viewGames, 3: self.logout, 4: quit}
+        memberMethods = {1: self.playGame, 2: self.viewGames, 3: self.viewProfile, 4: self.logout, 5: quit}
 
         while 1:
 
@@ -927,8 +927,9 @@ class Terminal(Ui):
             Choose an option:
             1. Play new game
             2. View games
-            3. Logout
-            4. Quit
+            3. View profile
+            4. Logout
+            5. Quit
             """
 
             if self.player == Player.GUEST:
@@ -937,8 +938,29 @@ class Terminal(Ui):
                 guestMethods[inp]()
             else:
                 print(memberMenu)
-                inp = self.getChoice(1, 4)
+                inp = self.getChoice(1, 5)
                 memberMethods[inp]()
+
+    def viewProfile(self):
+        numberOfWins, numberOfLosses, numberOfDraws, numberOfOngoings = Database.getNumberOfGamesForEachResult(self.player)
+        totalNumberOfGames = sum([numberOfWins, numberOfLosses, numberOfDraws, numberOfOngoings])
+        whenSaved = Database.getPlayer(self.player)[0]
+        profileString = f"""
+            {self.player}'s profile:
+
+            Number of played games: {totalNumberOfGames}
+            Number of won games: {numberOfWins}
+            Number of lost games: {numberOfLosses}
+            Number of drawn games: {numberOfDraws}
+            Number of ongoing games: {numberOfOngoings}
+
+            Profile created on {datetime.strftime(whenSaved, "%d/%m/%Y, %H:%M:%S")}
+            """
+        print(profileString)
+        print()
+        input("Press any key to go back > ")
+        print()
+        self.displayMenu()
 
     # Displays a message (the input parameter msg) and asks for an input from the user.
     # The input will only be valid if it is one of y or n, and the function will keep asking an input from the user if it isn't.
@@ -1181,7 +1203,12 @@ class Terminal(Ui):
             print("Player 2 has won!")
         else:
             print("It is a draw.")
-        if self.currGameRecord.mode == Mode.LAN: self.client.closeConnection()
+        if self.currGameRecord.mode == Mode.LAN:
+            self.client.closeConnection()
+        else:
+            choice = input("Enter s to save your game or any other key to go back > ")
+            if choice == "s":
+                self.processChoice(choice)
 
     # Creates a new client instance, connects it to the server, and obtains an opponent.
     def connectLan(self):
