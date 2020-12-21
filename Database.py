@@ -49,7 +49,10 @@ def createDatabase():
     playerSQL = """
     CREATE TABLE Player(
     username TEXT PRIMARY KEY,
-    whenSaved TEXT NOT NULL
+    whenSaved TEXT NOT NULL,
+    numberOfWins INTEGER NOT NULL,
+    numberOfLosses INTEGER NOT NULL,
+    numberOfDraws INTEGER NOT NULL
     );"""
 
     hashtableSQL = """
@@ -144,21 +147,41 @@ def savePlayer(username, password, whenSaved):
     addPassword(username, password)
     whenSaved = datetime.strftime(whenSaved, "%d/%m/%Y, %H:%M:%S")
     recordSQL = """
-    INSERT INTO Player(username, whenSaved)
-    VALUES(?, ?);
+    INSERT INTO Player(username, whenSaved, numberOfWins, numberOfLosses, numberOfDraws)
+    VALUES(?, ?, 0, 0, 0);
     """
     editTable(recordSQL, (username, whenSaved))
 
 # Given a username, the details of the Player entry specified by username is returned from the function.
 def getPlayer(username):
     recordSQL = """
-    SELECT whenSaved
+    SELECT whenSaved, numberOfWins, numberOfLosses, numberOfDraws
     FROM Player
     WHERE username = ?;
     """
-    [whenSaved] = getRecords(recordSQL, (username,))[0]
+    whenSaved, numberOfWins, numberOfLosses, numberOfDraws = getRecords(recordSQL, (username,))[0]
     whenSaved = datetime.strptime(whenSaved, "%d/%m/%Y, %H:%M:%S")
-    return [whenSaved]
+    return [whenSaved, numberOfWins, numberOfLosses, numberOfDraws]
+
+def addPlayerResult(username, didWin):
+    if didWin == True:
+        field = "numberOfWins"
+    elif didWin == False:
+        field = "numberOfLosses"
+    else:
+        field = "numberOfDraws"
+    selectSQL = f"""
+    SELECT {field}
+    FROM Player
+    WHERE username = ?;
+    """
+    updateSQL = f"""
+    UPDATE Player
+    SET {field} = ?
+    WHERE username = ?;
+    """
+    [num] = getRecords(selectSQL, (username,))[0]
+    editTable(updateSQL, (num+1, username))
 
 # Given a username, the function returns if there are any existing Player entries in the Player table with that username.
 def isUniqueUsername(username):
@@ -214,23 +237,6 @@ def parseGames(games):
         gameRecord = GameRecord(g[0], g[1], g[2], g[3], g[5])
         parsedGames.append(gameRecord)
     return parsedGames
-
-def getNumberOfGamesForEachResult(username):
-    gamesP1Won = loadGames(username, Game.P1)
-    gamesP2Won = loadGames(username, Game.P2)
-    numberOfWins, numberOfLosses = 0, 0
-    numberOfOngoings, numberOfDraws = len(loadGames(username, Game.ONGOING)), len(loadGames(username, Game.DRAW))
-    for game in gamesP1Won:
-        if getPlayerGameUsername(game.id, Game.P1) == username:
-            numberOfWins += 1
-        else:
-            numberOfLosses += 1
-    for game in gamesP2Won:
-        if getPlayerGameUsername(game.id, Game.P2) == username:
-            numberOfWins += 1
-        else:
-            numberOfLosses += 1
-    return numberOfWins, numberOfLosses, numberOfDraws, numberOfOngoings
         
 # Given a username and a winner, the function returns all games which were played by the player with the username and had the specified winner.
 def loadGames(username, winner):

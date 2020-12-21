@@ -114,6 +114,20 @@ class Ui:
             status = "ONGOING"
         return f"{gameRecord.name} - players: {mode}, saved on: {whenSaved}, status: {status}"
 
+    def addUserResult(self, player):
+        if self.currGameRecord.game.winner == Game.DRAW:
+            Database.addPlayerResult(player, -1)
+        elif player == self.getUsernameOfPlayerNumber(self.currGameRecord.game.winner):
+            Database.addPlayerResult(player, True)
+        else:
+            Database.addPlayerResult(player, False)
+
+    def addResultsToProfile(self):
+        for player in [self.player, self.opponent]:
+            if player in [Player.COMP, Player.GUEST]: continue
+            self.addUserResult(player)
+        return [self.player, self.opponent] != [Player.GUEST, Player.GUEST]
+
     def run(self):
         raise NotImplementedError
 
@@ -255,6 +269,13 @@ class Gui(Ui):
     def playerNoPlayingLabel(self, playerNoPlayingLabel):
         self._playerNoPlayingLabel = playerNoPlayingLabel
 
+    def createNotificationWin(self, title, text, toplevel=-1):
+        if toplevel == -1: toplevel = self.root
+        notifWin = Toplevel(toplevel)
+        notifWin.title(title)
+        Label(notifWin, text=text).grid(row=0, column=0, padx=10, pady=5)
+        Button(notifWin, text="Ok", command=notifWin.destroy).grid(row=1, column=0, padx=10, pady=5)
+
     # Creates a window that allows the user to choose which game mode to play.
     def chooseGameMode(self):
         playGameWindow = Toplevel(self.root)
@@ -312,12 +333,12 @@ class Gui(Ui):
     # Creates a window providing the user the option to choose a saved game to load.
     def createLoadGameWindow(self, viewGamesWindow):
         viewGamesWindow.destroy()
-        loadGameWindow = Toplevel(self.root)
-        loadGameWindow.title("Load game")
         games = Database.loadGames(self.player, Game.ONGOING)
         if not games:
-            Label(loadGameWindow, text="You have no ongoing games").grid(row=0, column=0, padx=10, pady=5)
+            self.createNotificationWindow("Load game", "You have no ongoing games")
         else:
+            loadGameWindow = Toplevel(self.root)
+            loadGameWindow.title("Load game")
             Label(loadGameWindow, text="Select an ongoing game:").grid(row=0, column=0, padx=10, pady=5)
             values = []
             for gameRecord in games:
@@ -437,12 +458,13 @@ class Gui(Ui):
 
     # Undoes the last move in the currently being played game, and displays an error if not possible.
     def undo(self):
-        if self.currGameRecord.mode == Mode.PVP:
+        if not self.playing:
+            self.createNotificationWin("Game ended", "The game has ended - you can no longer undo moves")
+        elif self.currGameRecord.mode == Mode.PVP:
             try:
                 self.currGameRecord.game.undo()
             except GameError as e:
-                self.headLabel.config(text=f"Error: {e}.")
-                self.root.after(1500, self.updateHeadLabel)
+                self.createNotificationWin("Error", f"{e}.")
             else:
                 self.updateState()
         else:
@@ -450,8 +472,7 @@ class Gui(Ui):
                 self.currGameRecord.game.undo()
                 self.currGameRecord.game.undo()
             except GameError as e:
-                self.headLabel.config(text=f"Error: {e}.")
-                self.root.after(1500, self.updateHeadLabel)
+                self.createNotificationWin("Error", f"{e}.")
             else:
                 self.updateState()
 
@@ -481,10 +502,7 @@ class Gui(Ui):
 
     def createSavedGameConfirmationWindow(self):
         Database.updateGame(self.currGameRecord)
-        notifySavedGameWindow = Toplevel(self.root)
-        notifySavedGameWindow.title("Game saved")
-        Label(notifySavedGameWindow, text="Your game has been saved").grid(row=0, column=0, padx=10, pady=5)
-        Button(notifySavedGameWindow, text="Ok", command=notifySavedGameWindow.destroy).grid(row=1, column=0, padx=10, pady=5)
+        self.createNotificationWin("Game saved", "Your game has been saved")
     
     # Updates how the menu frame is displayed (the left-most frame in the GUI) depending on whether the user is logged in or not.
     def updateMenuFrame(self):
@@ -504,26 +522,27 @@ class Gui(Ui):
     def createViewProfileWindow(self):
         viewProfileWindow = Toplevel(self.root)
         viewProfileWindow.title("View profile")
-        numberOfWins, numberOfLosses, numberOfDraws, numberOfOngoings = Database.getNumberOfGamesForEachResult(self.player)
-        totalNumberOfGames = sum([numberOfWins, numberOfLosses, numberOfDraws, numberOfOngoings])
-        whenSaved = Database.getPlayer(self.player)[0]
+        whenSaved, numberOfWins, numberOfLosses, numberOfDraws = Database.getPlayer(self.player)
+        numberOfSavedGames = len(Database.loadAllGames(self.player))
+        numberOfOngoings = len(Database.loadGames(self.player, Game.ONGOING))
+        totalNumberOfGames = sum([numberOfWins, numberOfLosses, numberOfDraws])
         Label(viewProfileWindow, text=f"{self.player}'s profile:").grid(row=0, column=0, padx=10, pady=10)
-        Label(viewProfileWindow, text=f"Number of saved games: {totalNumberOfGames}").grid(row=1, column=0, padx=10, pady=5)
+        Label(viewProfileWindow, text=f"Number of finished games: {totalNumberOfGames}").grid(row=1, column=0, padx=10, pady=5)
         Label(viewProfileWindow, text=f"Number of won games: {numberOfWins}").grid(row=2, column=0, padx=10, pady=5)
         Label(viewProfileWindow, text=f"Number of lost games: {numberOfLosses}").grid(row=3, column=0, padx=10, pady=5)
         Label(viewProfileWindow, text=f"Number of drawn games: {numberOfDraws}").grid(row=4, column=0, padx=10, pady=5)
-        Label(viewProfileWindow, text=f"Number of ongoing games: {numberOfOngoings}").grid(row=5, column=0, padx=10, pady=5)
-        Label(viewProfileWindow, text=f"Profile created on {datetime.strftime(whenSaved, '%d/%m/%Y, %H:%M:%S')}").grid(row=6, column=0, padx=10, pady=10)
-        Button(viewProfileWindow, text="Ok", command=viewProfileWindow.destroy).grid(row=7, column=0, padx=10, pady=5)
+        Label(viewProfileWindow, text=f"Number of saved games: {numberOfSavedGames}").grid(row=5, column=0, padx=10, pady=5)
+        Label(viewProfileWindow, text=f"Number of ongoing games: {numberOfOngoings}").grid(row=6, column=0, padx=10, pady=5)
+        Label(viewProfileWindow, text=f"Profile created on {datetime.strftime(whenSaved, '%d/%m/%Y, %H:%M:%S')}").grid(row=7, column=0, padx=10, pady=10)
+        Button(viewProfileWindow, text="Ok", command=viewProfileWindow.destroy).grid(row=8, column=0, padx=10, pady=5)
     
     def createViewGamesWindow(self):
-        viewGamesWindow = Toplevel(self.root)
-        viewGamesWindow.title("View games")
         games = Database.loadAllGames(self.player)
         if not games:
-            Label(viewGamesWindow, text="There are no games to view.").grid(row=0, column=0, padx=10, pady=5)
-            Button(viewGamesWindow, text="Ok", command=viewGamesWindow.destroy).grid(row=1, column=0, padx=10, pady=5)
+            self.createNotificationWin("View games", "There are no games to view.")
         else:
+            viewGamesWindow = Toplevel(self.root)
+            viewGamesWindow.title("View games")
             Label(viewGamesWindow, text="Saved games:").grid(row=0, column=0, columnspan=3, padx=10, pady=5)
             for i, gameRecord in enumerate(games):
                 Label(viewGamesWindow, text=f"{i+1}. {self.gameString(gameRecord)}").grid(row=i+1, column=0, columnspan=3, padx=10, pady=5)
@@ -549,29 +568,36 @@ class Gui(Ui):
             if self.gameString(gameRecord) == gameInfo:
                 break
         Database.deleteGame(gameRecord.id)
-        for widget in deleteGameWindow.winfo_children(): widget.destroy()
-        Label(deleteGameWindow, text=f"Game {gameRecord.name} successfully deleted.").grid(row=0, column=0, padx=10, pady=5)
-        Button(deleteGameWindow, text="Ok", command=deleteGameWindow.destroy).grid(row=1, column=0, padx=10, pady=5)
+        deleteGameWindow.destroy()
+        self.createNotificationWin("Game deleted", f"Game {gameRecord.name} successfully deleted.")
 
     # Creates a window asking for the user's confirmation to quit the currently being played game.
     def confirmQuit(self):
         confirmQuitWindow = Toplevel(self.root)
         confirmQuitWindow.title("Quit?")
         Label(confirmQuitWindow, text="Are you sure you want to quit?").grid(row=0, column=0, columnspan=2)
-        Label(confirmQuitWindow, text="(any unsaved progress will be lost)").grid(row=1, column=0, columnspan=2)
+        if self.currGameRecord.mode != Mode.LAN and self.playing:
+            txt = "(any unsaved progress will be lost)"
+        elif self.currGameRecord.mode == Mode.LAN and self.playing:
+            txt = "(quitting early will mean you automatically lose the game)"
+        else:
+            txt = ""
+        Label(confirmQuitWindow, text=txt).grid(row=1, column=0, columnspan=2)
         Button(confirmQuitWindow, text="Yes", command=partial(self.quitGame, confirmQuitWindow)).grid(row=2, column=0)
         Button(confirmQuitWindow, text="No", command=confirmQuitWindow.destroy).grid(row=2, column=1)
 
     # Quits the currently being played game and updates the GUI display appropriately.
     def quitGame(self, confirmQuitWindow):
-        if self.currGameRecord.mode == Mode.LAN:
-            if (not self.client.requestingMove) or (not self.playing):
+        if self.currGameRecord.mode == Mode.LAN and self.playing:
+            if not self.client.requestingMove:
+                self.client.makeMove((-1, -1))
                 self.client.closeConnection()
+                if self.playing:
+                    self.currGameRecord.game.winner = Game.P1 if self.currPlayers[Game.P1] == Player.OPP else Game.P2
+                self.addUserResult(self.player)
+                self.createNotificationWin("Profile updated", "Your profile has been updated with the game result.")
             else:
-                quitErrorWindow = Toplevel(confirmQuitWindow)
-                quitErrorWindow.title("Quit Error")
-                Label(quitErrorWindow, text="You can only quit on your turn").grid(row=0, column=0, padx=5, pady=5)
-                Button(quitErrorWindow, text="Ok", command=quitErrorWindow.destroy).grid(row=1, column=0, padx=5, pady=5)
+                self.createNotificationWin("Quit Error", "You can only quit on your turn", confirmQuitWindow)
                 return
         self.playing = False
         self.updateGameFrame()
@@ -701,17 +727,20 @@ class Gui(Ui):
         try:
             Game.validateRowCol(row, col, self.currGameRecord.game.board)
         except GameError as e:
-            self.headLabel.config(text=f"Error: {e}. Try again.")
-            self.root.after(1500, self.updateHeadLabel)
+            self.createNotificationWin("Error", f"{e}. Try again.")
         else:
-            self.play(row, col)
-            self.updateState()
-            if self.currGameRecord.mode == Mode.COMP and self.currGameRecord.game.winner == Game.ONGOING:
-                self.root.after(1, self.playComputer)
-            elif self.currGameRecord.mode == Mode.LAN and self.currPlayers[self.currGameRecord.game.player] == Player.OPP:
+            if self.currGameRecord.mode == Mode.LAN:
                 self.client.makeMove((row, col))
+                self.play(row, col)
+                self.updateState()
                 x = threading.Thread(target=self.lanGetDisplayMove)
                 x.start()
+            else:
+                self.play(row, col)
+                self.updateState()
+                if self.currGameRecord.mode == Mode.COMP and self.currGameRecord.game.winner == Game.ONGOING:
+                    self.root.after(1, self.playComputer)
+            
 
     # Called after a user playing Player v.s. Player LAN places a piece on the board.
     # Gets the move from the opponent by calling the client's getMove function, and then plays and displays the new board state.
@@ -724,10 +753,9 @@ class Gui(Ui):
             self.playing = False
             self.updateGameFrame()
             self.updateOptionFrame()
-            opponentQuit = Toplevel(self.root)
-            opponentQuit.title("Opponent quit")
-            Label(opponentQuit, text="Your opponent has quit").grid(row=0, column=0, padx=5, pady=5)
-            Button(opponentQuit, text="OK", command=opponentQuit.destroy).grid(row=1, column=0, padx=5, pady=5)
+            self.currGameRecord.game.winner = Game.P1 if self.currPlayers[Game.P1] == Player.MAIN else Game.P2
+            self.addUserResult(self.player)
+            self.createNotificationWin("Opponent quit", "Your opponent has quit early - you have won the game (and your profile has been updated with the result)")
             return
         self.play(row, col)
         self.updateState()
@@ -805,6 +833,14 @@ class Gui(Ui):
         if self.currGameRecord.game.winner != Game.ONGOING:
             self.displayWin()
             self.playing = False
+            if self.currGameRecord.mode != Mode.LAN:
+                changesMade = self.addResultsToProfile()
+                if changesMade:
+                    self.createNotificationWin("Profile updated", "Your profile has been updated with the game result.")
+            else:
+                self.client.closeConnection()
+                self.addUserResult(self.player)
+                self.createNotificationWin("Profile updated", "Your profile has been updated with the game result.")
 
     # Called when starting a Player v.s. Player LAN game.
     # Makes a connection between the client and server and gets an opponent using the client's methods.
@@ -959,16 +995,18 @@ class Terminal(Ui):
                 memberMethods[inp]()
 
     def viewProfile(self):
-        numberOfWins, numberOfLosses, numberOfDraws, numberOfOngoings = Database.getNumberOfGamesForEachResult(self.player)
-        totalNumberOfGames = sum([numberOfWins, numberOfLosses, numberOfDraws, numberOfOngoings])
-        whenSaved = Database.getPlayer(self.player)[0]
+        whenSaved, numberOfWins, numberOfLosses, numberOfDraws = Database.getPlayer(self.player)
+        numberOfSavedGames = len(Database.loadAllGames(self.player))
+        numberOfOngoings = len(Database.loadGames(self.player, Game.ONGOING))
+        totalNumberOfGames = sum([numberOfWins, numberOfLosses, numberOfDraws])
         profileString = f"""
             {self.player}'s profile:
 
-            Number of saved games: {totalNumberOfGames}
+            Number of finished games: {totalNumberOfGames}
             Number of won games: {numberOfWins}
             Number of lost games: {numberOfLosses}
             Number of drawn games: {numberOfDraws}
+            Number of saved games: {numberOfSavedGames}
             Number of ongoing games: {numberOfOngoings}
 
             Profile created on {datetime.strftime(whenSaved, "%d/%m/%Y, %H:%M:%S")}
@@ -1166,6 +1204,11 @@ class Terminal(Ui):
         while 1:
             choice = input("Enter move: ")
             if choice == "q":
+                willQuit = True
+                if self.currGameRecord.mode == Mode.LAN:
+                    willQuit = self.getYesNo("Are you sure? Quitting early will mean you automatically lose the game. (y/n) ")
+                if not willQuit:
+                    continue
                 return choice, False, True
             elif choice == "s" and self.currGameRecord.mode != Mode.LAN:
                 return choice, False, False
@@ -1194,7 +1237,11 @@ class Terminal(Ui):
                 print(f"Waiting for {self.client.opponent} to play...")
                 row, col = self.client.getMove()
                 if (row, col) == (-1, -1):
-                    print("Server error: Your opponent has quit.")
+                    self.client.closeConnection()
+                    self.currGameRecord.game.winner = Game.P1 if self.currPlayers[Game.P1] == Player.MAIN else Game.P2
+                    self.addUserResult(self.player)
+                    print("Your opponent has quit - you have automatically won the game")
+                    print("Your profile has been updated with the game result.")
                     print("Press any key to continue.")
                     input()
                     return
@@ -1207,6 +1254,10 @@ class Terminal(Ui):
                     self.processChoice(choice)
                     if end:
                         if self.currGameRecord.mode == Mode.LAN:
+                            self.currGameRecord.game.winner = Game.P1 if self.currPlayers[Game.P1] == Player.OPP else Game.P2
+                            self.addUserResult(self.player)
+                            print("Your profile has been updated with the game result.")
+                            self.client.makeMove((-1, -1))
                             self.client.closeConnection()
                         return
                 else:
@@ -1220,9 +1271,15 @@ class Terminal(Ui):
             print("Player 2 has won!")
         else:
             print("It is a draw.")
+        
         if self.currGameRecord.mode == Mode.LAN:
             self.client.closeConnection()
+            self.addUserResult(self.player)
+            print("Your profile has been updated with the game result.")
         else:
+            changesMade = self.addResultsToProfile()
+            if changesMade:
+                print("Your profile has been updated with the game result.")
             choice = input("Enter s to save your game or any other key to go back > ")
             if choice == "s":
                 self.processChoice(choice)

@@ -72,8 +72,6 @@ class Client:
         self.s.send(pickle.dumps(Msg(self.username, Cmd.GETMOVE)))
         move = pickle.loads(self.s.recv(1024)).data
         self.requestingMove = False
-        if not move:
-            return (-1, -1)
         return move
 
     # Sends the player's move to the server.
@@ -82,5 +80,5 @@ class Client:
 
     # Closes the connection between the client and the server.
     def closeConnection(self):
-        self.s.send(pickle.dumps(Msg(self.username, Cmd.REM, self.opponent)))
+        self.s.send(pickle.dumps(Msg(self.username, Cmd.REM)))
         self.s.close()
