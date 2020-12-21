@@ -613,7 +613,7 @@ class Gui(Ui):
                     self.updateHeadLabel()
                     self.updateOptionFrame()
                 loginWindow.destroy()
-                if player == Player.OPP: self.choosePlayer(toplevel, False)
+                if player == Player.OPP: self.choosePlayer(toplevel, Mode.PVP)
         else:
             statusLabel.config(text="Incorrect username or password")
 
