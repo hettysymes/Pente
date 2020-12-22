@@ -100,15 +100,14 @@ def pickRandomMove(board):
 
 # Returns the value of a game state given the board and captures.
 def getValue(board, captures):
-    p1lines = getNumberOfLines(board, [1, 2, 3, 4], Game.P1)
-    p2lines = getNumberOfLines(board, [1, 2, 3, 4], Game.P2)
+    p1lines = getNumberOfLines(board, [1, 2, 3], Game.P1)
+    p2lines = getNumberOfLines(board, [1, 2, 3], Game.P2)
     p1CaptureLines = getNumberOfCaptureLines(board, Game.P1)
     p2CaptureLines = getNumberOfCaptureLines(board, Game.P2)
     val = 30000*(len(captures[Game.P1]) - len(captures[Game.P2]))
     val += 10*(p1lines[0] - p2lines[0])
     val += 20*(p1lines[1] - p2lines[1])
     val += 50*(p1lines[2] - p2lines[2])
-    val += 999999999999*2*(p1lines[3] - p2lines[3])
     val += 10000*(p1CaptureLines - p2CaptureLines)
     val += 999999999999*(getNumberOfWinOpportunities(board, captures, Game.P1, p1CaptureLines) - getNumberOfWinOpportunities(board, captures, Game.P2, p2CaptureLines))
     return val
@@ -123,17 +122,13 @@ def getImmediateMove(board, captures, player):
             tempBoard, tempCaptures = Game.newState(board, captures, player, row, col)[:-1]
             if Game.getWinner(tempBoard, tempCaptures) == player:
                 return True, (row, col)
-            elif len(tempCaptures[player]) > len(captures[player]) and move[1] < 2:
-                move = [(row, col), 2]
+            elif len(tempCaptures[player]) > len(captures[player]) and move[1] < 1:
+                move = [(row, col), 1]
             tempBoard, tempCaptures = Game.newState(board, captures, opp, row, col)[:-1]
-            if Game.getWinner(tempBoard, tempCaptures) == opp and move[1] < 4:
-                move = [(row, col), 4]
-            elif Game.inRow(tempBoard, row, col, [opp, opp, opp]) and move[1] < 3:
-                move = [(row, col), 3]
-            elif len(tempCaptures[opp]) > len(captures[opp]) and move[1] < 2:
+            if Game.getWinner(tempBoard, tempCaptures) == opp and move[1] < 2:
                 move = [(row, col), 2]
-            elif Game.inRow(board, row, col, [opp, opp, Game.EMPTY]) and move[1] < 2:
-                move = [(row, col), 2]
+            elif len(tempCaptures[opp]) > len(captures[opp]) and move[1] < 1:
+                move = [(row, col), 1]
     if move[0] != None:
         return True, move[0]
     return False, ()

@@ -52,7 +52,8 @@ def createDatabase():
     whenSaved TEXT NOT NULL,
     numberOfWins INTEGER NOT NULL,
     numberOfLosses INTEGER NOT NULL,
-    numberOfDraws INTEGER NOT NULL
+    numberOfDraws INTEGER NOT NULL,
+    score INTEGER NOT NULL
     );"""
 
     hashtableSQL = """
@@ -105,7 +106,7 @@ def editTable(recordSQL, values, getId=False):
     return id
 
 # Given a recordQuery (written in SQL) and values to be used in the SQL, the getRecords function returns the records specified by the recordQuery.
-def getRecords(recordQuery, values):
+def getRecords(recordQuery, values=()):
     conn, c = connect()
     c.execute(recordQuery, values)
     res = c.fetchall()
@@ -147,41 +148,53 @@ def savePlayer(username, password, whenSaved):
     addPassword(username, password)
     whenSaved = datetime.strftime(whenSaved, "%d/%m/%Y, %H:%M:%S")
     recordSQL = """
-    INSERT INTO Player(username, whenSaved, numberOfWins, numberOfLosses, numberOfDraws)
-    VALUES(?, ?, 0, 0, 0);
+    INSERT INTO Player(username, whenSaved, numberOfWins, numberOfLosses, numberOfDraws, score)
+    VALUES(?, ?, 0, 0, 0, 0);
     """
     editTable(recordSQL, (username, whenSaved))
 
 # Given a username, the details of the Player entry specified by username is returned from the function.
 def getPlayer(username):
     recordSQL = """
-    SELECT whenSaved, numberOfWins, numberOfLosses, numberOfDraws
+    SELECT whenSaved, numberOfWins, numberOfLosses, numberOfDraws, score
     FROM Player
     WHERE username = ?;
     """
-    whenSaved, numberOfWins, numberOfLosses, numberOfDraws = getRecords(recordSQL, (username,))[0]
+    whenSaved, numberOfWins, numberOfLosses, numberOfDraws, score = getRecords(recordSQL, (username,))[0]
     whenSaved = datetime.strptime(whenSaved, "%d/%m/%Y, %H:%M:%S")
-    return [whenSaved, numberOfWins, numberOfLosses, numberOfDraws]
+    return [whenSaved, numberOfWins, numberOfLosses, numberOfDraws, score]
 
 def addPlayerResult(username, didWin):
     if didWin == True:
         field = "numberOfWins"
+        scoreAdd = 3
     elif didWin == False:
         field = "numberOfLosses"
+        scoreAdd = 1
     else:
         field = "numberOfDraws"
+        scoreAdd = 2
     selectSQL = f"""
-    SELECT {field}
+    SELECT {field}, score
     FROM Player
     WHERE username = ?;
     """
     updateSQL = f"""
     UPDATE Player
-    SET {field} = ?
+    SET {field} = ?, score = ?
     WHERE username = ?;
     """
-    [num] = getRecords(selectSQL, (username,))[0]
-    editTable(updateSQL, (num+1, username))
+    num, score = getRecords(selectSQL, (username,))[0]
+    editTable(updateSQL, (num+1, score+scoreAdd, username))
+
+def getPlayerRank(username):
+    recordSQL = """
+    SELECT username
+    FROM Player
+    ORDER BY score DESC;
+    """
+    playerUsernames = getRecords(recordSQL)
+    return playerUsernames.index((username,))+1
 
 # Given a username, the function returns if there are any existing Player entries in the Player table with that username.
 def isUniqueUsername(username):

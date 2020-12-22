@@ -522,10 +522,11 @@ class Gui(Ui):
     def createViewProfileWindow(self):
         viewProfileWindow = Toplevel(self.root)
         viewProfileWindow.title("View profile")
-        whenSaved, numberOfWins, numberOfLosses, numberOfDraws = Database.getPlayer(self.player)
+        whenSaved, numberOfWins, numberOfLosses, numberOfDraws, score = Database.getPlayer(self.player)
         numberOfSavedGames = len(Database.loadAllGames(self.player))
         numberOfOngoings = len(Database.loadGames(self.player, Game.ONGOING))
         totalNumberOfGames = sum([numberOfWins, numberOfLosses, numberOfDraws])
+        rank = Database.getPlayerRank(self.player)
         Label(viewProfileWindow, text=f"{self.player}'s profile:").grid(row=0, column=0, padx=10, pady=10)
         Label(viewProfileWindow, text=f"Number of finished games: {totalNumberOfGames}").grid(row=1, column=0, padx=10, pady=5)
         Label(viewProfileWindow, text=f"Number of won games: {numberOfWins}").grid(row=2, column=0, padx=10, pady=5)
@@ -533,8 +534,10 @@ class Gui(Ui):
         Label(viewProfileWindow, text=f"Number of drawn games: {numberOfDraws}").grid(row=4, column=0, padx=10, pady=5)
         Label(viewProfileWindow, text=f"Number of saved games: {numberOfSavedGames}").grid(row=5, column=0, padx=10, pady=5)
         Label(viewProfileWindow, text=f"Number of ongoing games: {numberOfOngoings}").grid(row=6, column=0, padx=10, pady=5)
-        Label(viewProfileWindow, text=f"Profile created on {datetime.strftime(whenSaved, '%d/%m/%Y, %H:%M:%S')}").grid(row=7, column=0, padx=10, pady=10)
-        Button(viewProfileWindow, text="Ok", command=viewProfileWindow.destroy).grid(row=8, column=0, padx=10, pady=5)
+        Label(viewProfileWindow, text=f"Score: {score}").grid(row=7, column=0, padx=10, pady=10)
+        Label(viewProfileWindow, text=f"Rank: {rank}").grid(row=8, column=0, padx=10, pady=5)
+        Label(viewProfileWindow, text=f"Profile created on {datetime.strftime(whenSaved, '%d/%m/%Y, %H:%M:%S')}").grid(row=9, column=0, padx=10, pady=10)
+        Button(viewProfileWindow, text="Ok", command=viewProfileWindow.destroy).grid(row=10, column=0, padx=10, pady=5)
     
     def createViewGamesWindow(self):
         games = Database.loadAllGames(self.player)
@@ -995,10 +998,11 @@ class Terminal(Ui):
                 memberMethods[inp]()
 
     def viewProfile(self):
-        whenSaved, numberOfWins, numberOfLosses, numberOfDraws = Database.getPlayer(self.player)
+        whenSaved, numberOfWins, numberOfLosses, numberOfDraws, score = Database.getPlayer(self.player)
         numberOfSavedGames = len(Database.loadAllGames(self.player))
         numberOfOngoings = len(Database.loadGames(self.player, Game.ONGOING))
         totalNumberOfGames = sum([numberOfWins, numberOfLosses, numberOfDraws])
+        rank = Database.getPlayerRank(self.player)
         profileString = f"""
             {self.player}'s profile:
 
@@ -1008,6 +1012,8 @@ class Terminal(Ui):
             Number of drawn games: {numberOfDraws}
             Number of saved games: {numberOfSavedGames}
             Number of ongoing games: {numberOfOngoings}
+            Score: {score}
+            Rank: {rank}
 
             Profile created on {datetime.strftime(whenSaved, "%d/%m/%Y, %H:%M:%S")}
             """
