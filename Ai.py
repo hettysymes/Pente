@@ -57,14 +57,28 @@ def getNumberOfCaptureLines(board, player):
                 total += 1
     return total
 
-def getNumberOfWinOpportunities(board, captures, player, numberOfCaptureLines):
+def getNumberOfWinOpportunities(board, captures, player):
     winOpportunities = 0
-    if numberOfCaptureLines + len(captures[player]) >= 5:
-        winOpportunities += len(captures[player]) - numberOfCaptureLines
+    numberOfCapturesNeededToWin = 5-len(captures[player])
+
+    opponent = Game.P2 if player == Game.P1 else Game.P1
+    captureProducts = list(product([0, 1, -1], repeat=2))
+    captureProducts.remove((0, 0))
+
     for row in range(len(board)):
         for col in range(len(board)):
             if board[row][col] not in [player, Game.EMPTY]:
                 continue
+
+            if board[row][col] == Game.EMPTY:
+                numberOfCaptures = 0
+                validProducts = Game.getValidProducts(captureProducts, 3, row, col, len(board))
+                for rc in validProducts:
+                    pieces = [board[row+i*rc[0]][col+i*rc[1]] for i in range(1, 4)]
+                    if pieces == [opponent, opponent, player]:
+                        numberOfCaptures += 1
+                if numberOfCaptures >= numberOfCapturesNeededToWin: winOpportunities += 1
+
             validProducts = Game.getValidProducts([(0,1), (1,1), (1,0), (1,-1)], 4, row, col, len(board))
             for rc in validProducts:
                 pieces = [board[row+i*rc[0]][col+i*rc[1]] for i in range(1, 5)]
@@ -72,6 +86,7 @@ def getNumberOfWinOpportunities(board, captures, player, numberOfCaptureLines):
                     winOpportunities += 1
                 elif board[row][col] == Game.EMPTY and (pieces.count(player)==4):
                     winOpportunities += 1
+
     return winOpportunities
 
 # Returns the coordinates on the board which are next to an existing piece on the board.
@@ -100,6 +115,16 @@ def pickRandomMove(board):
 
 # Returns the value of a game state given the board and captures.
 def getValue(board, captures):
+    winner = Game.getWinner(board, captures)
+    if winner != Game.ONGOING:
+        if winner == Game.P1:
+            val = inf
+        elif winner == Game.P2:
+            val = -inf
+        elif winner == Game.DRAW:
+            val = 0
+        return val
+
     p1lines = getNumberOfLines(board, [1, 2, 3], Game.P1)
     p2lines = getNumberOfLines(board, [1, 2, 3], Game.P2)
     p1CaptureLines = getNumberOfCaptureLines(board, Game.P1)
@@ -109,7 +134,7 @@ def getValue(board, captures):
     val += 20*(p1lines[1] - p2lines[1])
     val += 50*(p1lines[2] - p2lines[2])
     val += 10000*(p1CaptureLines - p2CaptureLines)
-    val += 999999999999*(getNumberOfWinOpportunities(board, captures, Game.P1, p1CaptureLines) - getNumberOfWinOpportunities(board, captures, Game.P2, p2CaptureLines))
+    val += 999999999999*(getNumberOfWinOpportunities(board, captures, Game.P1) - getNumberOfWinOpportunities(board, captures, Game.P2))
     return val
 
 def getImmediateMove(board, captures, player):
@@ -138,13 +163,7 @@ def minimax(board, captures, player, node, depth, alpha=(-inf,), beta=(inf,), mo
 
     winner = Game.getWinner(board, captures)
     if winner != Game.ONGOING:
-        if winner == Game.P1:
-            val = inf
-        elif winner == Game.P2:
-            val = -inf
-        elif winner == Game.DRAW:
-            val = 0
-        return (val, node.row, node.col)
+        return (getValue(board, captures), node.row, node.col)
 
     if depth == 0:
         tempBoard, tempCaptures = Game.newState(board, captures, player, node.row, node.col)[:-1]

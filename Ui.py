@@ -839,7 +839,8 @@ class Gui(Ui):
             if self.currGameRecord.mode != Mode.LAN:
                 changesMade = self.addResultsToProfile()
                 if changesMade:
-                    self.createNotificationWin("Profile updated", "Your profile has been updated with the game result.")
+                    Database.updateGame(self.currGameRecord)
+                    self.createNotificationWin("Profile updated", "Your profile has been updated with the game result, and your game has been saved.")
             else:
                 self.client.closeConnection()
                 self.addUserResult(self.player)
@@ -1285,10 +1286,9 @@ class Terminal(Ui):
         else:
             changesMade = self.addResultsToProfile()
             if changesMade:
+                self.saveGame()
                 print("Your profile has been updated with the game result.")
-            choice = input("Enter s to save your game or any other key to go back > ")
-            if choice == "s":
-                self.processChoice(choice)
+            input("Enter any key to go back > ")
 
     # Creates a new client instance, connects it to the server, and obtains an opponent.
     def connectLan(self):
