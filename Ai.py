@@ -67,7 +67,7 @@ def getNumberOfWinOpportunities(board, captures, player):
 
     for row in range(len(board)):
         for col in range(len(board)):
-            if board[row][col] not in [player, Game.EMPTY]:
+            if board[row][col] == opponent:
                 continue
 
             if board[row][col] == Game.EMPTY:
@@ -175,17 +175,19 @@ def minimax(board, captures, player, node, depth, alpha=(-inf,), beta=(inf,), mo
     for row, col in nextTo:
         node.addChild(row, col)
 
+    opponent = Game.P1 if player == Game.P2 else Game.P2
+    childrenValues = []
+    for child in node.children:
+        tempBoard, tempCaptures = Game.newState(board, captures, player, child.row, child.col)[:2]
+        childrenValues.append([getValue(tempBoard, tempCaptures), tempBoard, tempCaptures, child])
+
     if player == Game.P1:
         maxEval = (-inf, node.children[0].row, node.children[0].col)
-        childrenValues = []
-        for child in node.children:
-            tempBoard, tempCaptures, tempPlayer = Game.newState(board, captures, player, child.row, child.col)
-            childrenValues.append([getValue(tempBoard, tempCaptures), tempBoard, tempCaptures, child])
         childrenValues.sort(key=itemgetter(0))
         for _ in range(movesToAnalyse):
             if len(childrenValues) == 0: break
             value, tempBoard, tempCaptures, child = childrenValues.pop()
-            eval = minimax(tempBoard, tempCaptures, tempPlayer, child, depth-1, alpha, beta)
+            eval = minimax(tempBoard, tempCaptures, opponent, child, depth-1, alpha, beta)
             maxEval = max([maxEval, eval], key=itemgetter(0))
             alpha = max([alpha, eval], key=itemgetter(0))
             if alpha[0] >= beta[0]:
@@ -193,15 +195,11 @@ def minimax(board, captures, player, node, depth, alpha=(-inf,), beta=(inf,), mo
         return (maxEval[0], node.row, node.col) if not node.root else maxEval
     else:
         minEval = (inf, node.children[0].row, node.children[0].col)
-        childrenValues = []
-        for child in node.children:
-            tempBoard, tempCaptures, tempPlayer = Game.newState(board, captures, player, child.row, child.col)
-            childrenValues.append([getValue(tempBoard, tempCaptures), tempBoard, tempCaptures, child])
         childrenValues.sort(key=itemgetter(0), reverse=True)
         for _ in range(movesToAnalyse):
             if len(childrenValues) == 0: break
             value, tempBoard, tempCaptures, child = childrenValues.pop()
-            eval = minimax(tempBoard, tempCaptures, tempPlayer, child, depth-1, alpha, beta)
+            eval = minimax(tempBoard, tempCaptures, opponent, child, depth-1, alpha, beta)
             minEval = min([minEval, eval], key=itemgetter(0))
             beta = min([beta, eval], key=itemgetter(0))
             if beta[0] <= alpha[0]:
