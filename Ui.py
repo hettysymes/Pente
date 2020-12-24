@@ -493,7 +493,6 @@ class Gui(Ui):
                 if self.currGameRecord.id == -1:
                     command = self.createSaveGameWindow
                 else:
-                    self.currGameRecord.whenSaved = datetime.now()
                     command = self.createSavedGameConfirmationWindow
                 if self.currGameRecord.mode != Mode.LAN:
                     Button(self.optionFrame, text="Save game", command=command).grid(row=3, column=0, padx=10, pady=5)
@@ -501,6 +500,7 @@ class Gui(Ui):
             Label(self.optionFrame, text="Start playing?").grid(row=0, column=0, padx=10, pady=5)
 
     def createSavedGameConfirmationWindow(self):
+        self.currGameRecord.whenSaved = datetime.now()
         Database.updateGame(self.currGameRecord)
         self.createNotificationWin("Game saved", "Your game has been saved")
     
@@ -839,8 +839,13 @@ class Gui(Ui):
             if self.currGameRecord.mode != Mode.LAN:
                 changesMade = self.addResultsToProfile()
                 if changesMade:
-                    Database.updateGame(self.currGameRecord)
-                    self.createNotificationWin("Profile updated", "Your profile has been updated with the game result, and your game has been saved.")
+                    if self.currGameRecord.id != -1:
+                        self.currGameRecord.whenSaved = datetime.now()
+                        Database.updateGame(self.currGameRecord)
+                        txt = "Your profile has been updated with the game result, and your saved game has been updated."
+                    else:
+                        txt = "Your profile has been updated with the game result."
+                    self.createNotificationWin("Profile updated", txt)
             else:
                 self.client.closeConnection()
                 self.addUserResult(self.player)
@@ -1179,7 +1184,7 @@ class Terminal(Ui):
     def processChoice(self, choice):
         if choice == "s":
             nonGuests = [player for player in [self.player, self.opponent] if player != Player.GUEST and player != Player.COMP]
-            if nonGuests:
+            if nonGuests and self.currGameRecord.mode != Mode.LAN:
                     if len(nonGuests) > 1:
                         playerString = f"{nonGuests[0]}'s and {nonGuests[1]}'s accounts"
                     else:
@@ -1197,7 +1202,7 @@ class Terminal(Ui):
                     print(f"Error: {e}")
                 else:
                     self.printState()
-            else:
+            elif self.currGameRecord.mode == Mode.COMP:
                 try:
                     self.currGameRecord.game.undo()
                     self.currGameRecord.game.undo()
@@ -1205,6 +1210,9 @@ class Terminal(Ui):
                     print(f"Error: {e}")
                 else:
                     self.printState()
+            else:
+                print("Undo not available for LAN games")
+        print()
 
     # Called to get a choice or a move from the user whilst playing the game. This is then returned from the function.
     def getMove(self):
@@ -1217,9 +1225,9 @@ class Terminal(Ui):
                 if not willQuit:
                     continue
                 return choice, False, True
-            elif choice == "s" and self.currGameRecord.mode != Mode.LAN:
+            elif choice == "s":
                 return choice, False, False
-            elif choice == "u" and self.currGameRecord.mode != Mode.LAN:
+            elif choice == "u":
                 return choice, False, False
             else:
                 try:
@@ -1247,10 +1255,10 @@ class Terminal(Ui):
                     self.client.closeConnection()
                     self.currGameRecord.game.winner = Game.P1 if self.currPlayers[Game.P1] == Player.MAIN else Game.P2
                     self.addUserResult(self.player)
-                    print("Your opponent has quit - you have automatically won the game")
+                    print("Your opponent has quit - you have automatically won the game.")
+                    print()
                     print("Your profile has been updated with the game result.")
-                    print("Press any key to continue.")
-                    input()
+                    input("Press any key to continue > ")
                     return
                 else:
                     self.currGameRecord.game.play(row, col)
@@ -1286,8 +1294,13 @@ class Terminal(Ui):
         else:
             changesMade = self.addResultsToProfile()
             if changesMade:
-                self.saveGame()
-                print("Your profile has been updated with the game result.")
+                if self.currGameRecord.id != -1:
+                    self.currGameRecord.whenSaved = datetime.now()
+                    Database.updateGame(self.currGameRecord)
+                    txt = "Your profile has been updated with the game result, and your saved game has been updated."
+                else:
+                    txt = "Your profile has been updated with the game result."
+                print(txt)
             input("Enter any key to go back > ")
 
     # Creates a new client instance, connects it to the server, and obtains an opponent.

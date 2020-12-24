@@ -167,13 +167,13 @@ def getPlayer(username):
 def addPlayerResult(username, didWin):
     if didWin == True:
         field = "numberOfWins"
-        scoreAdd = 3
+        scoreAdd = 5
     elif didWin == False:
         field = "numberOfLosses"
         scoreAdd = 1
     else:
         field = "numberOfDraws"
-        scoreAdd = 2
+        scoreAdd = 3
     selectSQL = f"""
     SELECT {field}, score
     FROM Player
