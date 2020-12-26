@@ -883,14 +883,14 @@ class Terminal(Ui):
     def chooseMode(self):
         memberMenu = """
         Please choose a game mode:
-        1. Player v.s. Computer
-        2. Player v.s. Player
+        1. Player v.s. Player
+        2. Player v.s. Computer
         3. Player v.s. Player (LAN)
         """
         guestMenu = """
         Please choose a game mode:
-        1. Player v.s. Computer
-        2. Player v.s. Player
+        1. Player v.s. Player
+        2. Player v.s. Computer
         """
         if self.player == Player.GUEST:
             print(guestMenu)
@@ -898,7 +898,7 @@ class Terminal(Ui):
         else:
             print(memberMenu)
             c = self.getChoice(1, 3)
-        return [Mode.COMP, Mode.PVP, Mode.LAN][c-1]
+        return [Mode.PVP, Mode.COMP, Mode.LAN][c-1]
 
     # Asks the user which player they would like to play as (providing both users are not using guest accounts).
     def choosePlayer(self):
