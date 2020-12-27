@@ -45,6 +45,7 @@ def getNumberOfLines(board, lengths, player):
                         totals[i] += 1
     return totals
 
+# Returns the number of patterns of pieces there are that would allow a certain player to make a capture on the next move.
 def getNumberOfCaptureLines(board, player):
     total = 0
     opp = Game.P1 if player == Game.P2 else Game.P2
@@ -57,6 +58,7 @@ def getNumberOfCaptureLines(board, player):
                 total += 1
     return total
 
+# Returns the number of moves that a certain player can make in order to immediately win.
 def getNumberOfWinOpportunities(board, captures, player):
     winOpportunities = 0
     numberOfCapturesNeededToWin = 5-len(captures[player])
@@ -105,6 +107,7 @@ def getNextTo(board):
                     nextTo.add((row+rc[0], col+rc[1]))
     return list(nextTo)
 
+# Returns a random, empty intersection on the board.
 def pickRandomMove(board):
     emptyCoords = []
     for row in range(len(board)):
@@ -137,6 +140,7 @@ def getValue(board, captures):
     val += 999999999999*(getNumberOfWinOpportunities(board, captures, Game.P1) - getNumberOfWinOpportunities(board, captures, Game.P2))
     return val
 
+# Returns whether it can find an immediate good move, along with the move if it can find one (either an immediate win or capture).
 def getImmediateMove(board, captures, player):
     move = [None, 0]
     opp = Game.P1 if player == Game.P2 else Game.P2

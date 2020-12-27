@@ -114,6 +114,7 @@ class Ui:
             status = "ONGOING"
         return f"{gameRecord.name} - players: {mode}, saved on: {whenSaved}, status: {status}"
 
+    # Given the username of a player, adds the player's result to their player profile by calling the database's addPlayerResult procedure.
     def addUserResult(self, player):
         if self.currGameRecord.game.winner == Game.DRAW:
             Database.addPlayerResult(player, -1)
@@ -122,6 +123,7 @@ class Ui:
         else:
             Database.addPlayerResult(player, False)
 
+    #Adds each player's result to their profile by calling the addUserResult procedure, and returns if any changes were made.
     def addResultsToProfile(self):
         for player in [self.player, self.opponent]:
             if player in [Player.COMP, Player.GUEST]: continue
@@ -140,6 +142,7 @@ class Gui(Ui):
         self._MAX_CANVAS_SIZE = 730
         self._currentBoard = None
         self._playing = False
+        self._markLastPiece = False
 
         self._root = Tk()
         self._root.title("Pente")
@@ -188,6 +191,14 @@ class Gui(Ui):
     @playing.setter
     def playing(self, playing):
         self._playing = playing
+
+    @property
+    def markLastPiece(self):
+        return self._markLastPiece
+
+    @markLastPiece.setter
+    def markLastPiece(self, markLastPiece):
+        self._markLastPiece = markLastPiece
 
     @property
     def root(self):
@@ -269,6 +280,7 @@ class Gui(Ui):
     def playerNoPlayingLabel(self, playerNoPlayingLabel):
         self._playerNoPlayingLabel = playerNoPlayingLabel
 
+    # Creates a notification window with a specified title, display text, and top level window, with one Ok button which destroys the window on being pressed.
     def createNotificationWin(self, title, text, toplevel=-1):
         if toplevel == -1: toplevel = self.root
         notifWin = Toplevel(toplevel)
@@ -293,6 +305,7 @@ class Gui(Ui):
         Button(playGameWindow, text="Yes", command=partial(self.createLoginWindow, Player.OPP, playGameWindow)).grid(row=1, column=0, padx=5)
         Button(playGameWindow, text="No", command=partial(self.choosePlayer, playGameWindow, Mode.PVP)).grid(row=1, column=1, padx=5)
 
+    # Creates a window which allows the user to choose their computer difficulty.
     def getComputerDifficulty(self, playGameWindow):
         for widget in playGameWindow.winfo_children(): widget.destroy()
         Label(playGameWindow, text="Choose the computer difficulty").grid(row=0, column=0, padx=10, pady=5)
@@ -300,6 +313,7 @@ class Gui(Ui):
         Button(playGameWindow, text="Medium", command=partial(self.setComputerDifficulty, playGameWindow, 2)).grid(row=2, column=0, padx=5)
         Button(playGameWindow, text="Hard", command=partial(self.setComputerDifficulty, playGameWindow, 3)).grid(row=3, column=0, padx=5)
 
+    # Sets the computer difficulty and calls the choosePlayer procedure for the user to choose their player number.
     def setComputerDifficulty(self, playGameWindow, difficulty):
         self.compDifficulty = difficulty
         self.choosePlayer(playGameWindow, Mode.COMP)
@@ -348,7 +362,7 @@ class Gui(Ui):
             comboBox.grid(row=1, column=0, padx=10, pady=5)
             Button(loadGameWindow, text="Load game", command=partial(self.loadGame, loadGameWindow, comboBox.get(), games)).grid(row=2, column=0, padx=10, pady=5)
 
-    # Given the game information of the game being loaded, accesses the database for the game record of the game being loaded by calling the database's loadGames function, and calls the playGame function to start the game.
+    # Given the game information of the game being loaded, accesses the database for the game record of the game being loaded by calling the database's loadGames function, and calls the playGame procedure to start the game.
     def loadGame(self, loadGameWindow, gameInfo, games):
         for gameRecord in games:
             if self.gameString(gameRecord) == gameInfo:
@@ -409,7 +423,7 @@ class Gui(Ui):
         statusLabel.grid(row=6, column=0, columnspan=2, pady=5)
         Button(saveGameWindow, text="Confirm", command=partial(self.saveGame, saveGameWindow, gameNameEntry, statusLabel)).grid(row=5, column=0, columnspan=2, pady=10)
 
-    # Given a game name, calls the database's saveGame function to save the contents of the current game information with the game name to the database.
+    # Given a game name, calls the database's saveGame procedure to save the contents of the current game information with the game name to the database.
     def saveGame(self, saveGameWindow, gameNameEntry, statusLabel):
         gameName = gameNameEntry.get()
         if gameName == "":
@@ -439,7 +453,7 @@ class Gui(Ui):
         statusLabel.grid(row=5, column=0, columnspan=2, pady=5)
         Button(createAccountWindow, text="Confirm", command=partial(self.createAccount, createAccountWindow, usernameEntry, passwordEntry1, passwordEntry2, statusLabel)).grid(row=4, column=0, columnspan=2, pady=10)
 
-    # Given a username and password, creates a new account by creating a new entry in the database's Player table by calling its savePlayer function.
+    # Given a username and password, creates a new account by creating a new entry in the database's Player table by calling its savePlayer procedure.
     def createAccount(self, createAccountWindow, usernameEntry, passwordEntry1, passwordEntry2, statusLabel):
         username, password1, password2 = usernameEntry.get(), passwordEntry1.get(), passwordEntry2.get()
         if username == "" or password1 == "" or password2 == "":
@@ -484,21 +498,29 @@ class Gui(Ui):
             self.playerNoPlayingLabel.grid(row=0, column=0, padx=10, pady=5)
             Button(self.optionFrame, text="Undo", command=self.undo).grid(row=1, column=0, padx=10, pady=5)
             Button(self.optionFrame, text="Quit game", command=self.confirmQuit).grid(row=2, column=0, padx=10, pady=5)
+            txt = "Switch Mark Last Piece off" if self.markLastPiece else "Switch Mark Last Piece on"
+            Button(self.optionFrame, text=txt, command=self.switchMarkPiece).grid(row=3, column=0, padx=10, pady=5)
             if self.currGameRecord.mode != Mode.PVP:
                 if self.currPlayers[Game.P1] == Player.MAIN:
-                    Label(self.optionFrame, text="YOU ARE PLAYER 1").grid(row=4, column=0, padx=10, pady=5)
+                    Label(self.optionFrame, text="YOU ARE PLAYER 1").grid(row=5, column=0, padx=10, pady=5)
                 else:
-                    Label(self.optionFrame, text="YOU ARE PLAYER 2").grid(row=4, column=0, padx=10, pady=5)
+                    Label(self.optionFrame, text="YOU ARE PLAYER 2").grid(row=5, column=0, padx=10, pady=5)
             if self.player != Player.GUEST or (self.opponent not in [Player.GUEST, Player.COMP]):
                 if self.currGameRecord.id == -1:
                     command = self.createSaveGameWindow
                 else:
                     command = self.createSavedGameConfirmationWindow
                 if self.currGameRecord.mode != Mode.LAN:
-                    Button(self.optionFrame, text="Save game", command=command).grid(row=3, column=0, padx=10, pady=5)
+                    Button(self.optionFrame, text="Save game", command=command).grid(row=4, column=0, padx=10, pady=5)
         else:
             Label(self.optionFrame, text="Start playing?").grid(row=0, column=0, padx=10, pady=5)
+    
+    def switchMarkPiece(self):
+        self.markLastPiece = not self.markLastPiece
+        self.updateState()
+        self.updateOptionFrame()
 
+    # Updates the game by calling the database's updateGame procedure, and creates a notification window to notify the user that the game was updated.
     def createSavedGameConfirmationWindow(self):
         self.currGameRecord.whenSaved = datetime.now()
         Database.updateGame(self.currGameRecord)
@@ -519,6 +541,7 @@ class Gui(Ui):
             Button(self.menuFrame, text="View profile", command=self.createViewProfileWindow).grid(row=3, column=0, padx=10, pady=5)
             Button(self.menuFrame, text="Logout", command=self.logout).grid(row=4, column=0, padx=10, pady=5)
 
+    # Creates a window which allows the user to view their player profile.
     def createViewProfileWindow(self):
         viewProfileWindow = Toplevel(self.root)
         viewProfileWindow.title("View profile")
@@ -539,6 +562,7 @@ class Gui(Ui):
         Label(viewProfileWindow, text=f"Profile created on {datetime.strftime(whenSaved, '%d/%m/%Y, %H:%M:%S')}").grid(row=9, column=0, padx=10, pady=10)
         Button(viewProfileWindow, text="Ok", command=viewProfileWindow.destroy).grid(row=10, column=0, padx=10, pady=5)
     
+    # Creates a window which allows the user to view their saved games, and to decide whether to load or delete any games.
     def createViewGamesWindow(self):
         games = Database.loadAllGames(self.player)
         if not games:
@@ -553,6 +577,7 @@ class Gui(Ui):
             Button(viewGamesWindow, text="Delete game", command=partial(self.createDeleteGameWindow, viewGamesWindow, games)).grid(row=i+2, column=1, padx=10, pady=5)
             Button(viewGamesWindow, text="Go back", command=viewGamesWindow.destroy).grid(row=i+2, column=2, padx=10, pady=5)
 
+    # Creates a window allowing the user to select a game to delete.
     def createDeleteGameWindow(self, viewGamesWindow, games):
         viewGamesWindow.destroy()
         deleteGameWindow = Toplevel(self.root)
@@ -566,6 +591,7 @@ class Gui(Ui):
         comboBox.grid(row=1, column=0, padx=10, pady=5)
         Button(deleteGameWindow, text="Delete game", command=partial(self.deleteGame, deleteGameWindow, comboBox.get(), games)).grid(row=2, column=0, padx=10, pady=5)
 
+    # Give game information of the game to delete and a list of games, the function deletes the game from the database using the database's deleteGame procedure.
     def deleteGame(self, deleteGameWindow, gameInfo, games):
         for gameRecord in games:
             if self.gameString(gameRecord) == gameInfo:
@@ -686,6 +712,8 @@ class Gui(Ui):
         self.createEmptyCellImage(squareSize)
         self.createPlayerImage(squareSize, "red", "player1.png")
         self.createPlayerImage(squareSize, "blue", "player2.png")
+        self.createMarkedPlayerImage(squareSize, "red", "player1Marked.png")
+        self.createMarkedPlayerImage(squareSize, "blue", "player2Marked.png")
 
     # Draws an image of an empty cell.
     def createEmptyCellImage(self, squareSize):
@@ -702,6 +730,16 @@ class Gui(Ui):
         draw.line((img.size[0]/2, 0, img.size[0]/2, img.size[1]), fill="black")
         draw.line((0, img.size[1]/2, img.size[0], img.size[1]/2), fill="black")
         draw.ellipse((img.size[0]/4, img.size[1]/4, img.size[0]*3/4, img.size[1]*3/4), fill=colour, outline="black")
+        img.save(name, "PNG")
+
+    # Draws an image of a player piece of a specified colour with black mark to indicate it was the last piece played.
+    def createMarkedPlayerImage(self, squareSize, colour, name):
+        img = Image.new("RGBA", (squareSize+6, squareSize+6), (255, 0, 0, 0))
+        draw = ImageDraw.Draw(img)
+        draw.line((img.size[0]/2, 0, img.size[0]/2, img.size[1]), fill="black")
+        draw.line((0, img.size[1]/2, img.size[0], img.size[1]/2), fill="black")
+        draw.ellipse((img.size[0]/4, img.size[1]/4, img.size[0]*3/4, img.size[1]*3/4), fill=colour, outline="black")
+        draw.ellipse((img.size[0]*7/16, img.size[1]*7/16, img.size[0]*9/16, img.size[1]*9/16), fill="black", outline="black")
         img.save(name, "PNG")
 
     # Creates a 2D array of Button objects which are positioned on the board.
@@ -768,11 +806,29 @@ class Gui(Ui):
         self.p1CapLabel.config(text=f"Player 1 captured pairs: {len(self.currGameRecord.game.captures[Game.P1])}")
         self.p2CapLabel.config(text=f"Player 2 captured pairs: {len(self.currGameRecord.game.captures[Game.P2])}")
 
+        prevMoves = [None, None]
+        try:
+            lastStack = self.currGameRecord.game.moveStack.pop()
+            prevMoves[0] = lastStack[1:]
+        except:
+            pass
+        else:
+            try:
+                prevMoves[1] = self.currGameRecord.game.moveStack.peek()[1:]
+            except:
+                pass
+            self.currGameRecord.game.moveStack.push(lastStack[0], lastStack[1], lastStack[2])
+
         for row in range(len(self.currGameRecord.game.board)):
             for col in range(len(self.currGameRecord.game.board)):
-                if self.currGameRecord.game.board[row][col] == self.currentBoard[row][col]:
+                if self.currGameRecord.game.board[row][col] == self.currentBoard[row][col] and (row, col) not in prevMoves:
                     continue
-                self.updateCell(row, col, self.currGameRecord.game.board[row][col])
+                if self.markLastPiece and prevMoves[0] == (row, col):
+                    self.updateCell(row, col, self.currGameRecord.game.board[row][col], mark=True)
+                elif self.markLastPiece and prevMoves[1] == (row, col):
+                    self.updateCell(row, col, self.currGameRecord.game.board[row][col])
+                else:
+                    self.updateCell(row, col, self.currGameRecord.game.board[row][col])
         self.currentBoard = deepcopy(self.currGameRecord.game.board)
 
         if self.currGameRecord.game.player == Game.P1:
@@ -781,13 +837,19 @@ class Gui(Ui):
             self.playerNoPlayingLabel.config(text="Player 2 to play")
 
     # Updates the image displayed for a single board cell given its position and the piece it should hold.
-    def updateCell(self, row, col, piece):
+    def updateCell(self, row, col, piece, mark=False):
         if piece == Game.EMPTY:
             filename = "emptyCell.png"
-        elif piece == Game.P1:
-            filename = "player1.png"
-        elif piece == Game.P2:
-            filename = "player2.png"
+        elif not mark:
+            if piece == Game.P1:
+                filename = "player1.png"
+            else:
+                filename = "player2.png"
+        else:
+            if piece == Game.P1:
+                filename = "player1Marked.png"
+            else:
+                filename = "player2Marked.png"
         photoImg = PhotoImage(file=filename)
         button = self.buttons[row][col]
         button.configure(image=photoImg)
@@ -1003,6 +1065,7 @@ class Terminal(Ui):
                 inp = self.getChoice(1, 5)
                 memberMethods[inp]()
 
+    # Displays the player's profile information.
     def viewProfile(self):
         whenSaved, numberOfWins, numberOfLosses, numberOfDraws, score = Database.getPlayer(self.player)
         numberOfSavedGames = len(Database.loadAllGames(self.player))
@@ -1145,7 +1208,7 @@ class Terminal(Ui):
         else:
             return row, col
 
-    # Given a game to save, the saveGame function saves the game to the database by calling the database's own saveGame function.
+    # Given a game to save, the saveGame function saves the game to the database by calling the database's own saveGame procedure.
     def saveGame(self):
         self.currGameRecord.whenSaved = datetime.now()
         if self.currGameRecord.id != -1:
@@ -1172,7 +1235,7 @@ class Terminal(Ui):
             self.play()
 
     # Given a list of games, the deleteGame function asks for a choice from the player for which game to delete.
-    # The specified game from the list is then deleted by calling the database's deleteGame function.
+    # The specified game from the list is then deleted by calling the database's deleteGame procedure.
     def deleteGame(self, games):
         print("Which game would you like to delete? (e.g. 1, 2...)")
         inp = self.getChoice(1, len(games))

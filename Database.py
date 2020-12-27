@@ -164,6 +164,7 @@ def getPlayer(username):
     whenSaved = datetime.strptime(whenSaved, "%d/%m/%Y, %H:%M:%S")
     return [whenSaved, numberOfWins, numberOfLosses, numberOfDraws, score]
 
+# Adds a game result to the player's profile, and updates the player's score depending on the result.
 def addPlayerResult(username, didWin):
     if didWin == True:
         field = "numberOfWins"
@@ -187,6 +188,7 @@ def addPlayerResult(username, didWin):
     num, score = getRecords(selectSQL, (username,))[0]
     editTable(updateSQL, (num+1, score+scoreAdd, username))
 
+# Returns the specified player's rank by score amongst other players.
 def getPlayerRank(username):
     recordSQL = """
     SELECT username
