@@ -496,9 +496,10 @@ class Gui(Ui):
         if self.playing:
             self.playerNoPlayingLabel = Label(self.optionFrame)
             self.playerNoPlayingLabel.grid(row=0, column=0, padx=10, pady=5)
-            Button(self.optionFrame, text="Undo", command=self.undo).grid(row=1, column=0, padx=10, pady=5)
+            if self.currGameRecord.mode != Mode.LAN:
+                Button(self.optionFrame, text="Undo", command=self.undo).grid(row=1, column=0, padx=10, pady=5)
             Button(self.optionFrame, text="Quit game", command=self.confirmQuit).grid(row=2, column=0, padx=10, pady=5)
-            txt = "Switch Mark Last Piece off" if self.markLastPiece else "Switch Mark Last Piece on"
+            txt = "Switch Mark Last Piece OFF" if self.markLastPiece else "Switch Mark Last Piece ON"
             Button(self.optionFrame, text=txt, command=self.switchMarkPiece).grid(row=3, column=0, padx=10, pady=5)
             if self.currGameRecord.mode != Mode.PVP:
                 if self.currPlayers[Game.P1] == Player.MAIN:
@@ -517,8 +518,8 @@ class Gui(Ui):
     
     def switchMarkPiece(self):
         self.markLastPiece = not self.markLastPiece
-        self.updateState()
         self.updateOptionFrame()
+        self.updateState()
 
     # Updates the game by calling the database's updateGame procedure, and creates a notification window to notify the user that the game was updated.
     def createSavedGameConfirmationWindow(self):
@@ -697,11 +698,18 @@ class Gui(Ui):
         self.createImages(squareSize)
         self.updateOptionFrame()
         self.updateGameFrame(squareSize, canvasSize, gridsize)
-        if self.getUsernameOfPlayerNumber(self.currGameRecord.game.player) == Player.COMP:
-            self.playComputer()
-        elif self.currGameRecord.mode == Mode.LAN and self.currPlayers[self.currGameRecord.game.player] == Player.OPP:
+        if self.currGameRecord.mode == Mode.LAN:
+            if self.currPlayers[self.currGameRecord.game.player] == Player.MAIN:
+                self.play(gridsize//2, gridsize//2)
+                self.updateState()
+                self.client.makeMove((gridsize//2, gridsize//2))
             x = threading.Thread(target=self.lanGetDisplayMove)
             x.start()
+        else:
+            self.play(gridsize//2, gridsize//2)
+            self.updateState()
+            if self.getUsernameOfPlayerNumber(self.currGameRecord.game.player) == Player.COMP:
+                self.playComputer()
 
     # Starts running the GUI by calling Tkinter's mainloop function.
     def run(self):
@@ -1304,12 +1312,26 @@ class Terminal(Ui):
     def play(self):
         print("\nTo enter a move, enter the row followed by the column e.g. 1A or 1a.")
         print("Other than entering a move you can type q to quit, s to save, and u to undo.\n")
+
+        gridsize = len(self.currGameRecord.game.board)
+        if self.currGameRecord.mode == Mode.LAN:
+            if self.currPlayers[self.currGameRecord.game.player] == Player.MAIN:
+                self.currGameRecord.game.play(gridsize//2, gridsize//2)
+                self.client.makeMove((gridsize//2, gridsize//2))
+        else:
+            self.currGameRecord.game.play(gridsize//2, gridsize//2)
+            if self.getUsernameOfPlayerNumber(self.currGameRecord.game.player) == Player.COMP:
+                row, col = Ai.play(self.currGameRecord.game.board, self.currGameRecord.game.captures, self.currGameRecord.game.player, self.compDifficulty)
+                print(f"COMPUTER PLAYED: {row+1}{chr(col+65)}")
+                self.currGameRecord.game.play(row, col)
+
         while self.currGameRecord.game.winner == Game.ONGOING:
             self.printState()
             playerStr = "Player 1 to play" if self.currGameRecord.game.player == Game.P1 else "Player 2 to play"
             print(playerStr)
             if self.getUsernameOfPlayerNumber(self.currGameRecord.game.player) == Player.COMP:
                 row, col = Ai.play(self.currGameRecord.game.board, self.currGameRecord.game.captures, self.currGameRecord.game.player, self.compDifficulty)
+                print(f"COMPUTER PLAYED: {row+1}{chr(col+65)}")
                 self.currGameRecord.game.play(row, col)
             elif self.currGameRecord.mode == Mode.LAN and self.currPlayers[self.currGameRecord.game.player] != Player.MAIN:
                 print(f"Waiting for {self.client.opponent} to play...")
