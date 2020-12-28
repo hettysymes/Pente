@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from copy import deepcopy
-from Game import Game, GameError, GameRecord
+from Game import Game, GameError, GameRecord, MoveStack
 from colorama import Fore, Style
 from enum import Enum, auto
 from datetime import datetime
@@ -123,12 +123,37 @@ class Ui:
         else:
             Database.addPlayerResult(player, False)
 
-    #Adds each player's result to their profile by calling the addUserResult procedure, and returns if any changes were made.
+    # Adds each player's result to their profile by calling the addUserResult procedure, and returns if any changes were made.
     def addResultsToProfile(self):
         for player in [self.player, self.opponent]:
             if player in [Player.COMP, Player.GUEST]: continue
             self.addUserResult(player)
         return [self.player, self.opponent] != [Player.GUEST, Player.GUEST]
+
+    # Writes the moves of a given game to a text file (with a given gameRecord) using Pente notation.
+    @staticmethod
+    def exportGameMoves(gameRecord):
+        boardsize = len(gameRecord.game.board)
+        reverseMoveStack = MoveStack()
+        moveStackCopy = deepcopy(gameRecord.game.moveStack)
+        while not moveStackCopy.isEmpty():
+            lastStack = moveStackCopy.pop()
+            reverseMoveStack.push(lastStack[0], lastStack[1], lastStack[2])
+        moveRecord = ""
+        isPlayer1Turn = True
+        lastCaptures = {Game.P1: [], Game.P2: []}
+        while not reverseMoveStack.isEmpty():
+            captures, row, col = reverseMoveStack.pop()
+            capturesMade = True if lastCaptures != captures else False
+            moveRecord += Game.getPenteMoveNotation(row, col, boardsize, capturesMade)
+            if isPlayer1Turn:
+                moveRecord += " "
+            else:
+                moveRecord += "\n"
+            isPlayer1Turn = not isPlayer1Turn
+            lastCaptures = captures
+        with open(gameRecord.name+"_moveRecord"+".txt", "w+") as f:
+            f.write(moveRecord)
 
     def run(self):
         raise NotImplementedError
@@ -573,10 +598,32 @@ class Gui(Ui):
             viewGamesWindow.title("View games")
             Label(viewGamesWindow, text="Saved games:").grid(row=0, column=0, columnspan=3, padx=10, pady=5)
             for i, gameRecord in enumerate(games):
-                Label(viewGamesWindow, text=f"{i+1}. {self.gameString(gameRecord)}").grid(row=i+1, column=0, columnspan=3, padx=10, pady=5)
+                Label(viewGamesWindow, text=f"{i+1}. {self.gameString(gameRecord)}").grid(row=i+1, column=0, columnspan=4, padx=10, pady=5)
             Button(viewGamesWindow, text="Load game", command=partial(self.createLoadGameWindow, viewGamesWindow)).grid(row=i+2, column=0, padx=10, pady=5)
             Button(viewGamesWindow, text="Delete game", command=partial(self.createDeleteGameWindow, viewGamesWindow, games)).grid(row=i+2, column=1, padx=10, pady=5)
-            Button(viewGamesWindow, text="Go back", command=viewGamesWindow.destroy).grid(row=i+2, column=2, padx=10, pady=5)
+            Button(viewGamesWindow, text="Export game moves", command=partial(self.createExportGameMovesWindow, viewGamesWindow, games)).grid(row=i+2, column=2, padx=10, pady=5)
+            Button(viewGamesWindow, text="Go back", command=viewGamesWindow.destroy).grid(row=i+2, column=3, padx=10, pady=5)
+
+    def createExportGameMovesWindow(self, viewGamesWindow, games):
+        viewGamesWindow.destroy()
+        exportGameWindow = Toplevel(self.root)
+        exportGameWindow.title("Export game moves")
+        Label(exportGameWindow, text="Select a game:").grid(row=0, column=0, padx=10, pady=5)
+        values = []
+        for gameRecord in games:
+            values.append(self.gameString(gameRecord))
+        comboBox = ttk.Combobox(exportGameWindow, values=values, width=100)
+        comboBox.current(0)
+        comboBox.grid(row=1, column=0, padx=10, pady=5)
+        Button(exportGameWindow, text="Export game moves", command=partial(self.exportGameMoveFile, exportGameWindow, comboBox.get(), games)).grid(row=2, column=0, padx=10, pady=5)
+
+    def exportGameMoveFile(self, exportGameWindow, gameInfo, games):
+        for gameRecord in games:
+            if self.gameString(gameRecord) == gameInfo:
+                break
+        Ui.exportGameMoves(gameRecord)
+        exportGameWindow.destroy()
+        self.createNotificationWin("Game move record created", f"Game move record for '{gameRecord.name}' successfully created.")
 
     # Creates a window allowing the user to select a game to delete.
     def createDeleteGameWindow(self, viewGamesWindow, games):
@@ -991,14 +1038,17 @@ class Terminal(Ui):
             Choose an option:
             1. Load game
             2. Delete game
-            3. Go back
+            3. Export game moves
+            4. Go back
             """
             print(menu)
-            inp = self.getChoice(1, 3)
+            inp = self.getChoice(1, 4)
             if inp == 1:
                 self.loadGame()
             elif inp == 2:
                 self.deleteGame(games)
+            elif inp == 3:
+                self.exportGameMoveFile(games)
 
     # Gets the game mode and asks for additional information needed for the game.
     # Calls the play function to start the game.
@@ -1226,6 +1276,13 @@ class Terminal(Ui):
             self.currGameRecord.name = name
             Database.saveGame(self.getUsernameOfPlayerNumber(Game.P1), self.getUsernameOfPlayerNumber(Game.P2), self.currGameRecord)
         print("Game saved successfully.")
+
+    def exportGameMoveFile(self, games):
+        print("Which game's moves would you like to export? (e.g. 1, 2...)")
+        inp = self.getChoice(1, len(games))
+        gameRecord = games[inp-1]
+        Ui.exportGameMoves(gameRecord)
+        print(f"Game move record for '{gameRecord.name}' successfully created.")
 
     # Displays a list of the ongoing games on the screen, and asks the user to choose one to load.
     # Once a game has been chosen, the play function is called to play the loaded game.

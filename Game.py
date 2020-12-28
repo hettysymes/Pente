@@ -150,6 +150,30 @@ class Game:
                 self.board[cap[0]][cap[1]] = otherPlayer
         self.board[row][col] = Game.EMPTY
 
+    # Given a Pente move, boardsize, and whether the move made any captures, the function will return the Pente notation of the move.
+    @staticmethod
+    def getPenteMoveNotation(row, col, boardsize, capturesMade):
+        centre = boardsize//2
+        changeInY, changeInX = row-centre, col-centre
+        if changeInX == 0 and changeInY == 0:
+            string = "0"
+        else:
+            if changeInX > 0:
+                xExp = f"R{changeInX}"
+            elif changeInX < 0:
+                xExp = f"L{-changeInX}"
+            else:
+                xExp = ""
+            if changeInY > 0:
+                yExp = f"D{changeInY}"
+            elif changeInY < 0:
+                yExp = f"U{-changeInY}"
+            else:
+                yExp = ""
+            string = xExp + yExp
+        if capturesMade: string += "*"
+        return string
+
 # The MoveStack class is implemented as a stack used to store the captures and moves played in the game.
 class MoveStack:
 
