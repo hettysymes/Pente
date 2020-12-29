@@ -155,6 +155,36 @@ class Ui:
         with open(gameRecord.name+"_moveRecord"+".txt", "w+") as f:
             f.write(moveRecord)
 
+    @staticmethod
+    def getRulesText():
+        return """
+HOW TO PLAY PENTE
+
+Pente is a board game where players take turns playing pieces on intersections of the board.
+In this version of Pente, there will only be two players in total.
+
+The first move for player 1 is forced, as they must move at the centre of the board.
+Other than this, players can place their pieces on any empty intersection on the board.
+
+A player can win in one of two ways:
+1. They manage to make a row of 5 (or more) of their pieces on the board
+2. They manage to capture 5 (or more) pairs of their opponent's pieces
+
+Captures can be made by a player by placing their piece such that a pair of the opponent's pieces becomes trapped between two of the player's pieces.
+This means that captures can only be made in pairs.
+If, however, the opponent places their piece such that two of their pieces are trapped between two of the player's existing pieces, this does not count as a capture.
+        
+PENTE MOVE NOTATION
+
+Pente moves are described in terms of positions relative to the centre of the board.
+First, the x-position is described by writing R (right) or L (left), followed by the number of steps in that direction.
+Then, the y-position is described by writing U (up) or D (down), again followed by the number of steps.
+E.g. R3U2 refers to the position three to the right of and two above the centre of the board.
+If the move is on one of the axes through the centre, one of the parts is ignored (e.g. U3 for directly up 3).
+Moves made directly on the centre of the board is indicated by 0.
+An asterisk (*) is made next to any move which causes a capture.
+        """
+
     def run(self):
         raise NotImplementedError
 
@@ -304,6 +334,16 @@ class Gui(Ui):
     @playerNoPlayingLabel.setter
     def playerNoPlayingLabel(self, playerNoPlayingLabel):
         self._playerNoPlayingLabel = playerNoPlayingLabel
+
+    def createDisplayRulesWin(self):
+        displayRulesWin = Toplevel(self.root)
+        displayRulesWin.title("Display rules")
+        rules = Ui.getRulesText().split("\n")
+        i = 0
+        for line in rules:
+            Label(displayRulesWin, text=line).grid(row=i, column=0, padx=10, pady=2)
+            i += 1
+        Button(displayRulesWin, text="Ok", command=displayRulesWin.destroy).grid(row=i, column=0, padx=10, pady=5)
 
     # Creates a notification window with a specified title, display text, and top level window, with one Ok button which destroys the window on being pressed.
     def createNotificationWin(self, title, text, toplevel=-1):
@@ -557,15 +597,17 @@ class Gui(Ui):
         for widget in self.menuFrame.winfo_children(): widget.destroy()
         if self.player == Player.GUEST:
             Label(self.menuFrame, text="Welcome to Pente!").grid(row=0, column=0, padx=10, pady=5)
-            Button(self.menuFrame, text="Play new game", command=self.chooseGameMode).grid(row=1, column=0, padx=10, pady=5)
-            Button(self.menuFrame, text="Login", command=partial(self.createLoginWindow, Player.MAIN, self.root)).grid(row=2, column=0, padx=10, pady=5)
-            Button(self.menuFrame, text="Create Account", command=self.createAccountWindow).grid(row=3, column=0, padx=10, pady=5)
+            Button(self.menuFrame, text="Display rules", command=self.createDisplayRulesWin).grid(row=1, column=0, padx=10, pady=5)
+            Button(self.menuFrame, text="Play new game", command=self.chooseGameMode).grid(row=2, column=0, padx=10, pady=5)
+            Button(self.menuFrame, text="Login", command=partial(self.createLoginWindow, Player.MAIN, self.root)).grid(row=3, column=0, padx=10, pady=5)
+            Button(self.menuFrame, text="Create Account", command=self.createAccountWindow).grid(row=4, column=0, padx=10, pady=5)
         else:
             Label(self.menuFrame, text=f"Welcome {self.player} to Pente!").grid(row=0, column=0, padx=10, pady=5)
-            Button(self.menuFrame, text="Play new game", command=self.chooseGameMode).grid(row=1, column=0, padx=10, pady=5)
-            Button(self.menuFrame, text="View games", command=self.createViewGamesWindow).grid(row=2, column=0, padx=10, pady=5)
-            Button(self.menuFrame, text="View profile", command=self.createViewProfileWindow).grid(row=3, column=0, padx=10, pady=5)
-            Button(self.menuFrame, text="Logout", command=self.logout).grid(row=4, column=0, padx=10, pady=5)
+            Button(self.menuFrame, text="Display rules", command=self.createDisplayRulesWin).grid(row=1, column=0, padx=10, pady=5)
+            Button(self.menuFrame, text="Play new game", command=self.chooseGameMode).grid(row=2, column=0, padx=10, pady=5)
+            Button(self.menuFrame, text="View games", command=self.createViewGamesWindow).grid(row=3, column=0, padx=10, pady=5)
+            Button(self.menuFrame, text="View profile", command=self.createViewProfileWindow).grid(row=4, column=0, padx=10, pady=5)
+            Button(self.menuFrame, text="Logout", command=self.logout).grid(row=5, column=0, padx=10, pady=5)
 
     # Creates a window which allows the user to view their player profile.
     def createViewProfileWindow(self):
@@ -1088,8 +1130,8 @@ class Terminal(Ui):
     # Displays one of two main menus (one for guest and one for logged in accounts), and asks for an option from the user.
     # The user's choice is used to call a relevant function to deal with the user's request.
     def displayMenu(self):
-        guestMethods = {1: self.playGame, 2: lambda: self.login(Player.MAIN), 3: self.createAccount, 4: quit}
-        memberMethods = {1: self.playGame, 2: self.viewGames, 3: self.viewProfile, 4: self.logout, 5: quit}
+        guestMethods = {1: self.displayRules, 2: self.playGame, 3: lambda: self.login(Player.MAIN), 4: self.createAccount, 5: quit}
+        memberMethods = {1: self.displayRules, 2: self.playGame, 3: self.viewGames, 4: self.viewProfile, 5: self.logout, 6: quit}
 
         while 1:
 
@@ -1097,30 +1139,32 @@ class Terminal(Ui):
             Welcome to Pente!
 
             Choose an option:
-            1. Play new game
-            2. Login
-            3. Create Account
-            4. Quit
+            1. Display rules
+            2. Play new game
+            3. Login
+            4. Create Account
+            5. Quit
             """
 
             memberMenu = f"""
             Welcome to Pente {self.player}!
 
             Choose an option:
-            1. Play new game
-            2. View games
-            3. View profile
-            4. Logout
-            5. Quit
+            1. Display rules
+            2. Play new game
+            3. View games
+            4. View profile
+            5. Logout
+            6. Quit
             """
 
             if self.player == Player.GUEST:
                 print(guestMenu)
-                inp = self.getChoice(1, 4)
+                inp = self.getChoice(1, 5)
                 guestMethods[inp]()
             else:
                 print(memberMenu)
-                inp = self.getChoice(1, 5)
+                inp = self.getChoice(1, 6)
                 memberMethods[inp]()
 
     # Displays the player's profile information.
@@ -1458,3 +1502,11 @@ class Terminal(Ui):
         oppNo = 1 if playerNo == 2 else 2
         print(f"Opponent: {self.opponent} (player {oppNo})")
         print(f"You are player {playerNo}")
+
+    def displayRules(self):
+        print(Ui.getRulesText())
+        print()
+        input("Press any key to go back > ")
+
+if __name__ == "__main__":
+    pass
