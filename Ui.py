@@ -87,14 +87,14 @@ class Ui:
         self._compDifficulty = compDifficulty
 
     # Given a player (one of Game.P1 and Game.P2), the function returns the username of that player number (or Player.GUEST if the player is not logged in, or Player.COMP if the player is a computer).
-    def getUsernameOfPlayerNumber(self, player):
+    def _getUsernameOfPlayerNumber(self, player):
         if self.currPlayers[player] == Player.MAIN:
             return self.player
         else:
             return self.opponent
 
     # Given a gameRecord (of the GameRecord datatype), returns a string summarising the information in the gameRecord.
-    def gameString(self, gameRecord):
+    def _gameString(self, gameRecord):
         players = [Database.getPlayerGameUsername(gameRecord.id, Game.P1), Database.getPlayerGameUsername(gameRecord.id, Game.P2)]
         for i in range(2):
             if players[i] == False:
@@ -115,24 +115,24 @@ class Ui:
         return f"{gameRecord.name} - players: {mode}, saved on: {whenSaved}, status: {status}"
 
     # Given the username of a player, adds the player's result to their player profile by calling the database's addPlayerResult procedure.
-    def addUserResult(self, player):
+    def _addUserResult(self, player):
         if self.currGameRecord.game.winner == Game.DRAW:
             Database.addPlayerResult(player, -1)
-        elif player == self.getUsernameOfPlayerNumber(self.currGameRecord.game.winner):
+        elif player == self._getUsernameOfPlayerNumber(self.currGameRecord.game.winner):
             Database.addPlayerResult(player, True)
         else:
             Database.addPlayerResult(player, False)
 
     # Adds each player's result to their profile by calling the addUserResult procedure, and returns if any changes were made.
-    def addResultsToProfile(self):
+    def _addResultsToProfile(self):
         for player in [self.player, self.opponent]:
             if player in [Player.COMP, Player.GUEST]: continue
-            self.addUserResult(player)
+            self._addUserResult(player)
         return [self.player, self.opponent] != [Player.GUEST, Player.GUEST]
 
     # Writes the moves of a given game to a text file (with a given gameRecord) using Pente notation.
     @staticmethod
-    def exportGameMoves(gameRecord):
+    def _exportGameMoves(gameRecord):
         boardsize = len(gameRecord.game.board)
         reverseMoveStack = MoveStack()
         moveStackCopy = deepcopy(gameRecord.game.moveStack)
@@ -155,8 +155,9 @@ class Ui:
         with open(gameRecord.name+"_moveRecord"+".txt", "w+") as f:
             f.write(moveRecord)
 
+    # Returns a string containing the rules of Pente
     @staticmethod
-    def getRulesText():
+    def _getRulesText():
         return """
 HOW TO PLAY PENTE
 
@@ -185,6 +186,7 @@ Moves made directly on the centre of the board is indicated by 0.
 An asterisk (*) is made next to any move which causes a capture.
         """
 
+    # Raises a NotImplementedError if the subclasses don't have a run function
     def run(self):
         raise NotImplementedError
 
@@ -223,9 +225,9 @@ class Gui(Ui):
         self._p2CapLabel = Label(self.gameFrame, relief="ridge", font=("Helvetica", 18))
         self._p2CapLabel.grid(row=3, column=0, sticky="NESW")
 
-        self.updateOptionFrame()
-        self.updateMenuFrame()
-        self.updateGameFrame()
+        self._updateOptionFrame()
+        self._updateMenuFrame()
+        self._updateGameFrame()
 
     @property
     def MAX_CANVAS_SIZE(self):
@@ -335,10 +337,11 @@ class Gui(Ui):
     def playerNoPlayingLabel(self, playerNoPlayingLabel):
         self._playerNoPlayingLabel = playerNoPlayingLabel
 
-    def createDisplayRulesWin(self):
+    # Creates a window which displays the rules of the game.
+    def _createDisplayRulesWin(self):
         displayRulesWin = Toplevel(self.root)
         displayRulesWin.title("Display rules")
-        rules = Ui.getRulesText().split("\n")
+        rules = Ui._getRulesText().split("\n")
         i = 0
         for line in rules:
             Label(displayRulesWin, text=line).grid(row=i, column=0, padx=10, pady=2)
@@ -346,7 +349,7 @@ class Gui(Ui):
         Button(displayRulesWin, text="Ok", command=displayRulesWin.destroy).grid(row=i, column=0, padx=10, pady=5)
 
     # Creates a notification window with a specified title, display text, and top level window, with one Ok button which destroys the window on being pressed.
-    def createNotificationWin(self, title, text, toplevel=-1):
+    def _createNotificationWin(self, title, text, toplevel=-1):
         if toplevel == -1: toplevel = self.root
         notifWin = Toplevel(toplevel)
         notifWin.title(title)
@@ -354,42 +357,42 @@ class Gui(Ui):
         Button(notifWin, text="Ok", command=notifWin.destroy).grid(row=1, column=0, padx=10, pady=5)
 
     # Creates a window that allows the user to choose which game mode to play.
-    def chooseGameMode(self):
+    def _chooseGameMode(self):
         playGameWindow = Toplevel(self.root)
         playGameWindow.title("Play")
         Label(playGameWindow, text="Choose a game mode").grid(row=0, column=0, padx=10, pady=5)
-        Button(playGameWindow, text="Player v.s. Player", command=partial(self.confirmOppLogin, playGameWindow)).grid(row=1, column=0, padx=5)
-        Button(playGameWindow, text="Player v.s. Computer", command=partial(self.getComputerDifficulty, playGameWindow)).grid(row=2, column=0, padx=5)     
+        Button(playGameWindow, text="Player v.s. Player", command=partial(self._confirmOppLogin, playGameWindow)).grid(row=1, column=0, padx=5)
+        Button(playGameWindow, text="Player v.s. Computer", command=partial(self._getComputerDifficulty, playGameWindow)).grid(row=2, column=0, padx=5)     
         if self.player != Player.GUEST:
-            Button(playGameWindow, text="Player v.s. Player (LAN)", command=partial(self.connectLan, playGameWindow)).grid(row=3, column=0, padx=5)
+            Button(playGameWindow, text="Player v.s. Player (LAN)", command=partial(self._connectLan, playGameWindow)).grid(row=3, column=0, padx=5)
 
     # If the Player v.s. Player mode is chosen, the window is changed to ask the user whether the opponent would like to login.
-    def confirmOppLogin(self, playGameWindow):
+    def _confirmOppLogin(self, playGameWindow):
         for widget in playGameWindow.winfo_children(): widget.destroy()
         Label(playGameWindow, text="Would the other player like to login?").grid(row=0, column=0, columnspan=2, padx=10, pady=5)
-        Button(playGameWindow, text="Yes", command=partial(self.createLoginWindow, Player.OPP, playGameWindow)).grid(row=1, column=0, padx=5)
-        Button(playGameWindow, text="No", command=partial(self.choosePlayer, playGameWindow, Mode.PVP)).grid(row=1, column=1, padx=5)
+        Button(playGameWindow, text="Yes", command=partial(self._createLoginWindow, Player.OPP, playGameWindow)).grid(row=1, column=0, padx=5)
+        Button(playGameWindow, text="No", command=partial(self._choosePlayer, playGameWindow, Mode.PVP)).grid(row=1, column=1, padx=5)
 
     # Creates a window which allows the user to choose their computer difficulty.
-    def getComputerDifficulty(self, playGameWindow):
+    def _getComputerDifficulty(self, playGameWindow):
         for widget in playGameWindow.winfo_children(): widget.destroy()
         Label(playGameWindow, text="Choose the computer difficulty").grid(row=0, column=0, padx=10, pady=5)
-        Button(playGameWindow, text="Easy", command=partial(self.setComputerDifficulty, playGameWindow, 1)).grid(row=1, column=0, padx=5)
-        Button(playGameWindow, text="Medium", command=partial(self.setComputerDifficulty, playGameWindow, 2)).grid(row=2, column=0, padx=5)
-        Button(playGameWindow, text="Hard", command=partial(self.setComputerDifficulty, playGameWindow, 3)).grid(row=3, column=0, padx=5)
+        Button(playGameWindow, text="Easy", command=partial(self._setComputerDifficulty, playGameWindow, 1)).grid(row=1, column=0, padx=5)
+        Button(playGameWindow, text="Medium", command=partial(self._setComputerDifficulty, playGameWindow, 2)).grid(row=2, column=0, padx=5)
+        Button(playGameWindow, text="Hard", command=partial(self._setComputerDifficulty, playGameWindow, 3)).grid(row=3, column=0, padx=5)
 
     # Sets the computer difficulty and calls the choosePlayer procedure for the user to choose their player number.
-    def setComputerDifficulty(self, playGameWindow, difficulty):
+    def _setComputerDifficulty(self, playGameWindow, difficulty):
         self.compDifficulty = difficulty
-        self.choosePlayer(playGameWindow, Mode.COMP)
+        self._choosePlayer(playGameWindow, Mode.COMP)
 
     # Creates a window that allows the player to choose whether they play as player 1 or player 2.
-    def choosePlayer(self, playGameWindow, mode):
+    def _choosePlayer(self, playGameWindow, mode):
         if mode == Mode.COMP:
             self.opponent = Player.COMP
         if (self.player == Player.GUEST) and (self.opponent == Player.GUEST):
             playGameWindow.destroy()
-            self.playGame(Game.P1, mode)
+            self._playGame(Game.P1, mode)
         else:
             for widget in playGameWindow.winfo_children(): widget.destroy()
             if mode == Mode.COMP:
@@ -401,36 +404,36 @@ class Gui(Ui):
                     player = self.player
                 txt = f"Would {player} like to be player 1 or player 2?"
             Label(playGameWindow, text=txt).grid(row=0, column=0, columnspan=2, padx=10, pady=5)
-            Button(playGameWindow, text="Player 1", command=partial(self.playNewGame, playGameWindow, Game.P1, mode)).grid(row=1, column=0, padx=5)
-            Button(playGameWindow, text="Player 2", command=partial(self.playNewGame, playGameWindow, Game.P2, mode)).grid(row=1, column=1, padx=5)
+            Button(playGameWindow, text="Player 1", command=partial(self._playNewGame, playGameWindow, Game.P1, mode)).grid(row=1, column=0, padx=5)
+            Button(playGameWindow, text="Player 2", command=partial(self._playNewGame, playGameWindow, Game.P2, mode)).grid(row=1, column=1, padx=5)
 
     # Destroys the choose player window and calls the playGame function to start the game.
-    def playNewGame(self, playGameWindow, player, mode):
+    def _playNewGame(self, playGameWindow, player, mode):
         playGameWindow.destroy()
-        self.playGame(player, mode)
+        self._playGame(player, mode)
 
     # Creates a window providing the user the option to choose a saved game to load.
-    def createLoadGameWindow(self, viewGamesWindow):
+    def _createLoadGameWindow(self, viewGamesWindow):
         viewGamesWindow.destroy()
         games = Database.loadGames(self.player, Game.ONGOING)
         if not games:
-            self.createNotificationWindow("Load game", "You have no ongoing games")
+            self._createNotificationWindow("Load game", "You have no ongoing games")
         else:
             loadGameWindow = Toplevel(self.root)
             loadGameWindow.title("Load game")
             Label(loadGameWindow, text="Select an ongoing game:").grid(row=0, column=0, padx=10, pady=5)
             values = []
             for gameRecord in games:
-                values.append(self.gameString(gameRecord))
+                values.append(self._gameString(gameRecord))
             comboBox = ttk.Combobox(loadGameWindow, values=values, width=100)
             comboBox.current(0)
             comboBox.grid(row=1, column=0, padx=10, pady=5)
-            Button(loadGameWindow, text="Load game", command=partial(self.loadGame, loadGameWindow, comboBox.get(), games)).grid(row=2, column=0, padx=10, pady=5)
+            Button(loadGameWindow, text="Load game", command=partial(self._loadGame, loadGameWindow, comboBox.get(), games)).grid(row=2, column=0, padx=10, pady=5)
 
     # Given the game information of the game being loaded, accesses the database for the game record of the game being loaded by calling the database's loadGames function, and calls the playGame procedure to start the game.
-    def loadGame(self, loadGameWindow, gameInfo, games):
+    def _loadGame(self, loadGameWindow, gameInfo, games):
         for gameRecord in games:
-            if self.gameString(gameRecord) == gameInfo:
+            if self._gameString(gameRecord) == gameInfo:
                 break
         self.currGameRecord = gameRecord
         players = [Database.getPlayerGameUsername(self.currGameRecord.id, Game.P1), Database.getPlayerGameUsername(self.currGameRecord.id, Game.P2)]
@@ -444,14 +447,14 @@ class Gui(Ui):
             else:
                 self.opponent = player
         loadGameWindow.destroy()
-        self.playGame(mainPlayerPos, new=False)
+        self._playGame(mainPlayerPos, new=False)
 
     # Returns a list of the player 1 and player 2 usernames respectively (or 'Guest' if the player is not logged in, or 'Computer' if the player is the computer).
     # Used when displaying player information.
-    def getCurrPlayerStrings(self):
+    def _getCurrPlayerStrings(self):
         players = []
         for player in [Game.P1, Game.P2]:
-            p = self.getUsernameOfPlayerNumber(player)
+            p = self._getUsernameOfPlayerNumber(player)
             if p == Player.GUEST:
                 players.append("Guest")
             elif p == Player.COMP:
@@ -461,10 +464,10 @@ class Gui(Ui):
         return players
 
     # Creates a window allowing the user to save their currently being played game to the database and enter a game name to save it as.
-    def createSaveGameWindow(self):
+    def _createSaveGameWindow(self):
         saveGameWindow = Toplevel(self.root)
         saveGameWindow.title("Save game")
-        players = self.getCurrPlayerStrings()
+        players = self._getCurrPlayerStrings()
         winner = self.currGameRecord.game.winner
         if winner == Game.P1:
             gameStatus = "P1 won"
@@ -486,22 +489,22 @@ class Gui(Ui):
         gameNameEntry.grid(row=4, column=1, padx=5)
         statusLabel = Label(saveGameWindow, text="")
         statusLabel.grid(row=6, column=0, columnspan=2, pady=5)
-        Button(saveGameWindow, text="Confirm", command=partial(self.saveGame, saveGameWindow, gameNameEntry, statusLabel)).grid(row=5, column=0, columnspan=2, pady=10)
+        Button(saveGameWindow, text="Confirm", command=partial(self._saveGame, saveGameWindow, gameNameEntry, statusLabel)).grid(row=5, column=0, columnspan=2, pady=10)
 
     # Given a game name, calls the database's saveGame procedure to save the contents of the current game information with the game name to the database.
-    def saveGame(self, saveGameWindow, gameNameEntry, statusLabel):
+    def _saveGame(self, saveGameWindow, gameNameEntry, statusLabel):
         gameName = gameNameEntry.get()
         if gameName == "":
             statusLabel.config(text="Please enter a name to save the game as")
         else:
             self.currGameRecord.whenSaved, self.currGameRecord.name = datetime.now(), gameName
-            p1 = self.getUsernameOfPlayerNumber(Game.P1)
-            p2 = self.getUsernameOfPlayerNumber(Game.P2)
+            p1 = self._getUsernameOfPlayerNumber(Game.P1)
+            p2 = self._getUsernameOfPlayerNumber(Game.P2)
             Database.saveGame(p1, p2, self.currGameRecord)
             saveGameWindow.destroy()
 
     # Creates a window allowing the user to enter a username and password with which to create a new account.
-    def createAccountWindow(self):
+    def _createAccountWindow(self):
         createAccountWindow = Toplevel(self.root)
         createAccountWindow.title("Create Account")
         Label(createAccountWindow, text="Create Account").grid(row=0, column=0, columnspan=2, pady=10)
@@ -516,10 +519,10 @@ class Gui(Ui):
         passwordEntry2.grid(row=3, column=1, padx=5)
         statusLabel = Label(createAccountWindow, text="")
         statusLabel.grid(row=5, column=0, columnspan=2, pady=5)
-        Button(createAccountWindow, text="Confirm", command=partial(self.createAccount, createAccountWindow, usernameEntry, passwordEntry1, passwordEntry2, statusLabel)).grid(row=4, column=0, columnspan=2, pady=10)
+        Button(createAccountWindow, text="Confirm", command=partial(self._createAccount, createAccountWindow, usernameEntry, passwordEntry1, passwordEntry2, statusLabel)).grid(row=4, column=0, columnspan=2, pady=10)
 
     # Given a username and password, creates a new account by creating a new entry in the database's Player table by calling its savePlayer procedure.
-    def createAccount(self, createAccountWindow, usernameEntry, passwordEntry1, passwordEntry2, statusLabel):
+    def _createAccount(self, createAccountWindow, usernameEntry, passwordEntry1, passwordEntry2, statusLabel):
         username, password1, password2 = usernameEntry.get(), passwordEntry1.get(), passwordEntry2.get()
         if username == "" or password1 == "" or password2 == "":
             statusLabel.config(text="Please make sure no entries are blank")
@@ -530,42 +533,42 @@ class Gui(Ui):
         else:
             Database.savePlayer(username, password1, datetime.now())
             self.player = username
-            self.updateMenuFrame()
-            self.updateHeadLabel()
-            self.updateOptionFrame()
+            self._updateMenuFrame()
+            self._updateHeadLabel()
+            self._updateOptionFrame()
             createAccountWindow.destroy()
 
     # Undoes the last move in the currently being played game, and displays an error if not possible.
-    def undo(self):
+    def _undo(self):
         if not self.playing:
-            self.createNotificationWin("Game ended", "The game has ended - you can no longer undo moves")
+            self._createNotificationWin("Game ended", "The game has ended - you can no longer undo moves")
         elif self.currGameRecord.mode == Mode.PVP:
             try:
                 self.currGameRecord.game.undo()
             except GameError as e:
-                self.createNotificationWin("Error", f"{e}.")
+                self._createNotificationWin("Error", f"{e}.")
             else:
-                self.updateState()
+                self._updateState()
         else:
             try:
                 self.currGameRecord.game.undo()
                 self.currGameRecord.game.undo()
             except GameError as e:
-                self.createNotificationWin("Error", f"{e}.")
+                self._createNotificationWin("Error", f"{e}.")
             else:
-                self.updateState()
+                self._updateState()
 
     # Updates how the option frame is displayed (the right-most frame in the GUI) depending on the current state of the game being played.
-    def updateOptionFrame(self):
+    def _updateOptionFrame(self):
         for widget in self.optionFrame.winfo_children(): widget.destroy()
         if self.playing:
             self.playerNoPlayingLabel = Label(self.optionFrame)
             self.playerNoPlayingLabel.grid(row=0, column=0, padx=10, pady=5)
             if self.currGameRecord.mode != Mode.LAN:
-                Button(self.optionFrame, text="Undo", command=self.undo).grid(row=1, column=0, padx=10, pady=5)
-            Button(self.optionFrame, text="Quit game", command=self.confirmQuit).grid(row=2, column=0, padx=10, pady=5)
+                Button(self.optionFrame, text="Undo", command=self._undo).grid(row=1, column=0, padx=10, pady=5)
+            Button(self.optionFrame, text="Quit game", command=self._confirmQuit).grid(row=2, column=0, padx=10, pady=5)
             txt = "Switch Mark Last Piece OFF" if self.markLastPiece else "Switch Mark Last Piece ON"
-            Button(self.optionFrame, text=txt, command=self.switchMarkPiece).grid(row=3, column=0, padx=10, pady=5)
+            Button(self.optionFrame, text=txt, command=self._switchMarkPiece).grid(row=3, column=0, padx=10, pady=5)
             if self.currGameRecord.mode != Mode.PVP:
                 if self.currPlayers[Game.P1] == Player.MAIN:
                     Label(self.optionFrame, text="YOU ARE PLAYER 1").grid(row=5, column=0, padx=10, pady=5)
@@ -573,44 +576,45 @@ class Gui(Ui):
                     Label(self.optionFrame, text="YOU ARE PLAYER 2").grid(row=5, column=0, padx=10, pady=5)
             if self.player != Player.GUEST or (self.opponent not in [Player.GUEST, Player.COMP]):
                 if self.currGameRecord.id == -1:
-                    command = self.createSaveGameWindow
+                    command = self._createSaveGameWindow
                 else:
-                    command = self.createSavedGameConfirmationWindow
+                    command = self._createSavedGameConfirmationWindow
                 if self.currGameRecord.mode != Mode.LAN:
                     Button(self.optionFrame, text="Save game", command=command).grid(row=4, column=0, padx=10, pady=5)
         else:
             Label(self.optionFrame, text="Start playing?").grid(row=0, column=0, padx=10, pady=5)
     
-    def switchMarkPiece(self):
+    # Switches the status of the "mark last piece" option and updates the GUI display
+    def _switchMarkPiece(self):
         self.markLastPiece = not self.markLastPiece
-        self.updateOptionFrame()
-        self.updateState()
+        self._updateOptionFrame()
+        self._updateState()
 
     # Updates the game by calling the database's updateGame procedure, and creates a notification window to notify the user that the game was updated.
-    def createSavedGameConfirmationWindow(self):
+    def _createSavedGameConfirmationWindow(self):
         self.currGameRecord.whenSaved = datetime.now()
         Database.updateGame(self.currGameRecord)
-        self.createNotificationWin("Game saved", "Your game has been saved")
+        self._createNotificationWin("Game saved", "Your game has been saved")
     
     # Updates how the menu frame is displayed (the left-most frame in the GUI) depending on whether the user is logged in or not.
-    def updateMenuFrame(self):
+    def _updateMenuFrame(self):
         for widget in self.menuFrame.winfo_children(): widget.destroy()
         if self.player == Player.GUEST:
             Label(self.menuFrame, text="Welcome to Pente!").grid(row=0, column=0, padx=10, pady=5)
-            Button(self.menuFrame, text="Display rules", command=self.createDisplayRulesWin).grid(row=1, column=0, padx=10, pady=5)
-            Button(self.menuFrame, text="Play new game", command=self.chooseGameMode).grid(row=2, column=0, padx=10, pady=5)
-            Button(self.menuFrame, text="Login", command=partial(self.createLoginWindow, Player.MAIN, self.root)).grid(row=3, column=0, padx=10, pady=5)
-            Button(self.menuFrame, text="Create Account", command=self.createAccountWindow).grid(row=4, column=0, padx=10, pady=5)
+            Button(self.menuFrame, text="Display rules", command=self._createDisplayRulesWin).grid(row=1, column=0, padx=10, pady=5)
+            Button(self.menuFrame, text="Play new game", command=self._chooseGameMode).grid(row=2, column=0, padx=10, pady=5)
+            Button(self.menuFrame, text="Login", command=partial(self._createLoginWindow, Player.MAIN, self.root)).grid(row=3, column=0, padx=10, pady=5)
+            Button(self.menuFrame, text="Create Account", command=self._createAccountWindow).grid(row=4, column=0, padx=10, pady=5)
         else:
             Label(self.menuFrame, text=f"Welcome {self.player} to Pente!").grid(row=0, column=0, padx=10, pady=5)
-            Button(self.menuFrame, text="Display rules", command=self.createDisplayRulesWin).grid(row=1, column=0, padx=10, pady=5)
-            Button(self.menuFrame, text="Play new game", command=self.chooseGameMode).grid(row=2, column=0, padx=10, pady=5)
-            Button(self.menuFrame, text="View games", command=self.createViewGamesWindow).grid(row=3, column=0, padx=10, pady=5)
-            Button(self.menuFrame, text="View profile", command=self.createViewProfileWindow).grid(row=4, column=0, padx=10, pady=5)
-            Button(self.menuFrame, text="Logout", command=self.logout).grid(row=5, column=0, padx=10, pady=5)
+            Button(self.menuFrame, text="Display rules", command=self._createDisplayRulesWin).grid(row=1, column=0, padx=10, pady=5)
+            Button(self.menuFrame, text="Play new game", command=self._chooseGameMode).grid(row=2, column=0, padx=10, pady=5)
+            Button(self.menuFrame, text="View games", command=self._createViewGamesWindow).grid(row=3, column=0, padx=10, pady=5)
+            Button(self.menuFrame, text="View profile", command=self._createViewProfileWindow).grid(row=4, column=0, padx=10, pady=5)
+            Button(self.menuFrame, text="Logout", command=self._logout).grid(row=5, column=0, padx=10, pady=5)
 
     # Creates a window which allows the user to view their player profile.
-    def createViewProfileWindow(self):
+    def _createViewProfileWindow(self):
         viewProfileWindow = Toplevel(self.root)
         viewProfileWindow.title("View profile")
         whenSaved, numberOfWins, numberOfLosses, numberOfDraws, score = Database.getPlayer(self.player)
@@ -631,67 +635,69 @@ class Gui(Ui):
         Button(viewProfileWindow, text="Ok", command=viewProfileWindow.destroy).grid(row=10, column=0, padx=10, pady=5)
     
     # Creates a window which allows the user to view their saved games, and to decide whether to load or delete any games.
-    def createViewGamesWindow(self):
+    def _createViewGamesWindow(self):
         games = Database.loadAllGames(self.player)
         if not games:
-            self.createNotificationWin("View games", "There are no games to view.")
+            self._createNotificationWin("View games", "There are no games to view.")
         else:
             viewGamesWindow = Toplevel(self.root)
             viewGamesWindow.title("View games")
             Label(viewGamesWindow, text="Saved games:").grid(row=0, column=0, columnspan=3, padx=10, pady=5)
             for i, gameRecord in enumerate(games):
-                Label(viewGamesWindow, text=f"{i+1}. {self.gameString(gameRecord)}").grid(row=i+1, column=0, columnspan=4, padx=10, pady=5)
-            Button(viewGamesWindow, text="Load game", command=partial(self.createLoadGameWindow, viewGamesWindow)).grid(row=i+2, column=0, padx=10, pady=5)
-            Button(viewGamesWindow, text="Delete game", command=partial(self.createDeleteGameWindow, viewGamesWindow, games)).grid(row=i+2, column=1, padx=10, pady=5)
-            Button(viewGamesWindow, text="Export game moves", command=partial(self.createExportGameMovesWindow, viewGamesWindow, games)).grid(row=i+2, column=2, padx=10, pady=5)
+                Label(viewGamesWindow, text=f"{i+1}. {self._gameString(gameRecord)}").grid(row=i+1, column=0, columnspan=4, padx=10, pady=5)
+            Button(viewGamesWindow, text="Load game", command=partial(self._createLoadGameWindow, viewGamesWindow)).grid(row=i+2, column=0, padx=10, pady=5)
+            Button(viewGamesWindow, text="Delete game", command=partial(self._createDeleteGameWindow, viewGamesWindow, games)).grid(row=i+2, column=1, padx=10, pady=5)
+            Button(viewGamesWindow, text="Export game moves", command=partial(self._createExportGameMovesWindow, viewGamesWindow, games)).grid(row=i+2, column=2, padx=10, pady=5)
             Button(viewGamesWindow, text="Go back", command=viewGamesWindow.destroy).grid(row=i+2, column=3, padx=10, pady=5)
 
-    def createExportGameMovesWindow(self, viewGamesWindow, games):
+    # Creates a window which allows the user to select a game to export a file of its moves from
+    def _createExportGameMovesWindow(self, viewGamesWindow, games):
         viewGamesWindow.destroy()
         exportGameWindow = Toplevel(self.root)
         exportGameWindow.title("Export game moves")
         Label(exportGameWindow, text="Select a game:").grid(row=0, column=0, padx=10, pady=5)
         values = []
         for gameRecord in games:
-            values.append(self.gameString(gameRecord))
+            values.append(self._gameString(gameRecord))
         comboBox = ttk.Combobox(exportGameWindow, values=values, width=100)
         comboBox.current(0)
         comboBox.grid(row=1, column=0, padx=10, pady=5)
-        Button(exportGameWindow, text="Export game moves", command=partial(self.exportGameMoveFile, exportGameWindow, comboBox.get(), games)).grid(row=2, column=0, padx=10, pady=5)
+        Button(exportGameWindow, text="Export game moves", command=partial(self._exportGameMoveFile, exportGameWindow, comboBox.get(), games)).grid(row=2, column=0, padx=10, pady=5)
 
-    def exportGameMoveFile(self, exportGameWindow, gameInfo, games):
+    # Given the game information to export a move record for, it creates the file using the Ui exportGameMoves procedure and creates a notification window.
+    def _exportGameMoveFile(self, exportGameWindow, gameInfo, games):
         for gameRecord in games:
-            if self.gameString(gameRecord) == gameInfo:
+            if self._gameString(gameRecord) == gameInfo:
                 break
-        Ui.exportGameMoves(gameRecord)
+        Ui._exportGameMoves(gameRecord)
         exportGameWindow.destroy()
-        self.createNotificationWin("Game move record created", f"Game move record for '{gameRecord.name}' successfully created.")
+        self._createNotificationWin("Game move record created", f"Game move record for '{gameRecord.name}' successfully created.")
 
     # Creates a window allowing the user to select a game to delete.
-    def createDeleteGameWindow(self, viewGamesWindow, games):
+    def _createDeleteGameWindow(self, viewGamesWindow, games):
         viewGamesWindow.destroy()
         deleteGameWindow = Toplevel(self.root)
         deleteGameWindow.title("Delete game")
         Label(deleteGameWindow, text="Select a game:").grid(row=0, column=0, padx=10, pady=5)
         values = []
         for gameRecord in games:
-            values.append(self.gameString(gameRecord))
+            values.append(self._gameString(gameRecord))
         comboBox = ttk.Combobox(deleteGameWindow, values=values, width=100)
         comboBox.current(0)
         comboBox.grid(row=1, column=0, padx=10, pady=5)
-        Button(deleteGameWindow, text="Delete game", command=partial(self.deleteGame, deleteGameWindow, comboBox.get(), games)).grid(row=2, column=0, padx=10, pady=5)
+        Button(deleteGameWindow, text="Delete game", command=partial(self._deleteGame, deleteGameWindow, comboBox.get(), games)).grid(row=2, column=0, padx=10, pady=5)
 
     # Give game information of the game to delete and a list of games, the function deletes the game from the database using the database's deleteGame procedure.
-    def deleteGame(self, deleteGameWindow, gameInfo, games):
+    def _deleteGame(self, deleteGameWindow, gameInfo, games):
         for gameRecord in games:
-            if self.gameString(gameRecord) == gameInfo:
+            if self._gameString(gameRecord) == gameInfo:
                 break
         Database.deleteGame(gameRecord.id)
         deleteGameWindow.destroy()
-        self.createNotificationWin("Game deleted", f"Game {gameRecord.name} successfully deleted.")
+        self._createNotificationWin("Game deleted", f"Game {gameRecord.name} successfully deleted.")
 
     # Creates a window asking for the user's confirmation to quit the currently being played game.
-    def confirmQuit(self):
+    def _confirmQuit(self):
         confirmQuitWindow = Toplevel(self.root)
         confirmQuitWindow.title("Quit?")
         Label(confirmQuitWindow, text="Are you sure you want to quit?").grid(row=0, column=0, columnspan=2)
@@ -702,36 +708,36 @@ class Gui(Ui):
         else:
             txt = ""
         Label(confirmQuitWindow, text=txt).grid(row=1, column=0, columnspan=2)
-        Button(confirmQuitWindow, text="Yes", command=partial(self.quitGame, confirmQuitWindow)).grid(row=2, column=0)
+        Button(confirmQuitWindow, text="Yes", command=partial(self._quitGame, confirmQuitWindow)).grid(row=2, column=0)
         Button(confirmQuitWindow, text="No", command=confirmQuitWindow.destroy).grid(row=2, column=1)
 
     # Quits the currently being played game and updates the GUI display appropriately.
-    def quitGame(self, confirmQuitWindow):
+    def _quitGame(self, confirmQuitWindow):
         if self.currGameRecord.mode == Mode.LAN and self.playing:
             if not self.client.requestingMove:
                 self.client.makeMove((-1, -1))
                 self.client.closeConnection()
                 if self.playing:
                     self.currGameRecord.game.winner = Game.P1 if self.currPlayers[Game.P1] == Player.OPP else Game.P2
-                self.addUserResult(self.player)
-                self.createNotificationWin("Profile updated", "Your profile has been updated with the game result.")
+                self._addUserResult(self.player)
+                self._createNotificationWin("Profile updated", "Your profile has been updated with the game result.")
             else:
-                self.createNotificationWin("Quit Error", "You can only quit on your turn", confirmQuitWindow)
+                self._createNotificationWin("Quit Error", "You can only quit on your turn", confirmQuitWindow)
                 return
         self.playing = False
-        self.updateGameFrame()
-        self.updateOptionFrame()
+        self._updateGameFrame()
+        self._updateOptionFrame()
         confirmQuitWindow.destroy()
 
     # Logs out the currently logged in user and updates the GUI display appropriately.
-    def logout(self):
+    def _logout(self):
         self.player = Player.GUEST
-        self.updateMenuFrame()
-        self.updateHeadLabel()
-        self.updateOptionFrame()
+        self._updateMenuFrame()
+        self._updateHeadLabel()
+        self._updateOptionFrame()
 
     # Creates a window allowing the user to enter a username and password to log into an existing account.
-    def createLoginWindow(self, player, toplevel):
+    def _createLoginWindow(self, player, toplevel):
         loginWindow = Toplevel(toplevel)
         loginWindow.title("Login")
         Label(loginWindow, text="Login").grid(row=0, column=0, columnspan=2, pady=10)
@@ -743,35 +749,35 @@ class Gui(Ui):
         passwordEntry.grid(row=2, column=1, padx=5)
         statusLabel = Label(loginWindow, text="")
         statusLabel.grid(row=4, column=0, columnspan=2, pady=5)
-        Button(loginWindow, text="Confirm", command=partial(self.login, loginWindow, player, usernameEntry, passwordEntry, statusLabel, toplevel)).grid(row=3, column=0, columnspan=2, pady=10)
+        Button(loginWindow, text="Confirm", command=partial(self._login, loginWindow, player, usernameEntry, passwordEntry, statusLabel, toplevel)).grid(row=3, column=0, columnspan=2, pady=10)
 
     # Given a username and password, logs the user in by calling the database's checkPassword function to check that the username and passwords match.
-    def login(self, loginWindow, player, usernameEntry, passwordEntry, statusLabel, toplevel):
+    def _login(self, loginWindow, player, usernameEntry, passwordEntry, statusLabel, toplevel):
         username, password = usernameEntry.get(), passwordEntry.get()
         if Database.checkPassword(username, password):
                 if player == Player.MAIN:
                     self.player = username
-                    self.updateMenuFrame()
+                    self._updateMenuFrame()
                 else:
                     self.opponent = username
                 if self.playing:
-                    self.updateHeadLabel()
-                    self.updateOptionFrame()
+                    self._updateHeadLabel()
+                    self._updateOptionFrame()
                 loginWindow.destroy()
-                if player == Player.OPP: self.choosePlayer(toplevel, Mode.PVP)
+                if player == Player.OPP: self._choosePlayer(toplevel, Mode.PVP)
         else:
             statusLabel.config(text="Incorrect username or password")
 
     # Updates the head label (the central label at the top of the GUI) depending on the current game status.
-    def updateHeadLabel(self):
+    def _updateHeadLabel(self):
         if not self.playing:
             self.headLabel.config(text="PENTE", fg="black")
         else:
-            players = self.getCurrPlayerStrings()
+            players = self._getCurrPlayerStrings()
             self.headLabel.config(text=f"{players[0]} v.s. {players[1]}")
 
     # Given the player number of the user (mainPlayer), the game mode, and whether the game is new or loaded, the playGame function creates the board images and starts the game.
-    def playGame(self, mainPlayer, mode=Mode.PVP, new=True):
+    def _playGame(self, mainPlayer, mode=Mode.PVP, new=True):
         self.playing = True
         self.currPlayers[mainPlayer] = Player.MAIN
         otherPlayer = Game.P1 if mainPlayer == Game.P2 else Game.P2
@@ -784,36 +790,36 @@ class Gui(Ui):
         self.currentBoard = [[Game.EMPTY for _ in range(gridsize)] for _ in range(gridsize)]
         canvasSize = self.MAX_CANVAS_SIZE - (self.MAX_CANVAS_SIZE%gridsize)
         squareSize = canvasSize//(gridsize+1)
-        self.createImages(squareSize)
-        self.updateOptionFrame()
-        self.updateGameFrame(squareSize, canvasSize, gridsize)
+        self._createImages(squareSize)
+        self._updateOptionFrame()
+        self._updateGameFrame(squareSize, canvasSize, gridsize)
         if self.currGameRecord.mode == Mode.LAN:
             if self.currPlayers[self.currGameRecord.game.player] == Player.MAIN:
-                self.play(gridsize//2, gridsize//2)
-                self.updateState()
+                self._play(gridsize//2, gridsize//2)
+                self._updateState()
                 self.client.makeMove((gridsize//2, gridsize//2))
-            x = threading.Thread(target=self.lanGetDisplayMove)
+            x = threading.Thread(target=self._lanGetDisplayMove)
             x.start()
         else:
-            self.play(gridsize//2, gridsize//2)
-            self.updateState()
-            if self.getUsernameOfPlayerNumber(self.currGameRecord.game.player) == Player.COMP:
-                self.playComputer()
+            self._play(gridsize//2, gridsize//2)
+            self._updateState()
+            if self._getUsernameOfPlayerNumber(self.currGameRecord.game.player) == Player.COMP:
+                self._playComputer()
 
     # Starts running the GUI by calling Tkinter's mainloop function.
     def run(self):
         self.root.mainloop()
 
     # Calls functions which create the images for the empty board cells and the player pieces.
-    def createImages(self, squareSize):
-        self.createEmptyCellImage(squareSize)
-        self.createPlayerImage(squareSize, "red", "player1.png")
-        self.createPlayerImage(squareSize, "blue", "player2.png")
-        self.createMarkedPlayerImage(squareSize, "red", "player1Marked.png")
-        self.createMarkedPlayerImage(squareSize, "blue", "player2Marked.png")
+    def _createImages(self, squareSize):
+        self._createEmptyCellImage(squareSize)
+        self._createPlayerImage(squareSize, "red", "player1.png")
+        self._createPlayerImage(squareSize, "blue", "player2.png")
+        self._createMarkedPlayerImage(squareSize, "red", "player1Marked.png")
+        self._createMarkedPlayerImage(squareSize, "blue", "player2Marked.png")
 
     # Draws an image of an empty cell.
-    def createEmptyCellImage(self, squareSize):
+    def _createEmptyCellImage(self, squareSize):
         img = Image.new("RGBA", (squareSize+6, squareSize+6), (255, 0, 0, 0))
         draw = ImageDraw.Draw(img)
         draw.line((img.size[0]/2, 0, img.size[0]/2, img.size[1]), fill="black")
@@ -821,7 +827,7 @@ class Gui(Ui):
         img.save("emptyCell.png", "PNG")
 
     # Draws an image of a player piece of a specified colour.
-    def createPlayerImage(self, squareSize, colour, name):
+    def _createPlayerImage(self, squareSize, colour, name):
         img = Image.new("RGBA", (squareSize+6, squareSize+6), (255, 0, 0, 0))
         draw = ImageDraw.Draw(img)
         draw.line((img.size[0]/2, 0, img.size[0]/2, img.size[1]), fill="black")
@@ -830,7 +836,7 @@ class Gui(Ui):
         img.save(name, "PNG")
 
     # Draws an image of a player piece of a specified colour with black mark to indicate it was the last piece played.
-    def createMarkedPlayerImage(self, squareSize, colour, name):
+    def _createMarkedPlayerImage(self, squareSize, colour, name):
         img = Image.new("RGBA", (squareSize+6, squareSize+6), (255, 0, 0, 0))
         draw = ImageDraw.Draw(img)
         draw.line((img.size[0]/2, 0, img.size[0]/2, img.size[1]), fill="black")
@@ -842,9 +848,9 @@ class Gui(Ui):
     # Creates a 2D array of Button objects which are positioned on the board.
     # Clicking a button indicates the user wants to place a piece at that position on the board.
     # When a button is pressed, the place function is called with the button position on the board passed in as arguments.
-    def getButtons(self, squareSize, gridsize):
+    def _getButtons(self, squareSize, gridsize):
         photoImg = PhotoImage(file="emptyCell.png")
-        buttons = [[Button(self.gameFrame, width = squareSize, height = squareSize, image = photoImg, bg = "white", relief = FLAT, command = partial(self.place, y, x)) for x in range(gridsize)] for y in range(gridsize)]
+        buttons = [[Button(self.gameFrame, width = squareSize, height = squareSize, image = photoImg, bg = "white", relief = FLAT, command = partial(self._place, y, x)) for x in range(gridsize)] for y in range(gridsize)]
         for y, buttonRow in enumerate(buttons):
             for x, button in enumerate(buttonRow):
                 button.image = photoImg
@@ -852,54 +858,54 @@ class Gui(Ui):
         return buttons
 
     # Gets a move from the AI and plays it on the board.
-    def playComputer(self):
+    def _playComputer(self):
         row, col = Ai.play(self.currGameRecord.game.board, self.currGameRecord.game.captures, self.currGameRecord.game.player, self.compDifficulty)
-        self.play(row, col)
-        self.updateState()             
+        self._play(row, col)
+        self._updateState()             
 
     # Called when a button on the board is clicked, with the arguments indicating the position on the board.
     # The place function calls the play function to play a piece at the specified position if the move is valid. The GUI display is updated to show this.
     # If the user is playing against the computer or Player v.s. Player LAN, the function also gets the next move from the opponent.
-    def place(self, row, col):
+    def _place(self, row, col):
         if (self.currGameRecord.game.winner != Game.ONGOING) or (self.currGameRecord.mode != Mode.PVP and self.currPlayers[self.currGameRecord.game.player] == Player.OPP): return
         try:
             Game.validateRowCol(row, col, self.currGameRecord.game.board)
         except GameError as e:
-            self.createNotificationWin("Error", f"{e}. Try again.")
+            self._createNotificationWin("Error", f"{e}. Try again.")
         else:
             if self.currGameRecord.mode == Mode.LAN:
                 self.client.makeMove((row, col))
-                self.play(row, col)
-                self.updateState()
-                x = threading.Thread(target=self.lanGetDisplayMove)
+                self._play(row, col)
+                self._updateState()
+                x = threading.Thread(target=self._lanGetDisplayMove)
                 x.start()
             else:
-                self.play(row, col)
-                self.updateState()
+                self._play(row, col)
+                self._updateState()
                 if self.currGameRecord.mode == Mode.COMP and self.currGameRecord.game.winner == Game.ONGOING:
-                    self.root.after(1, self.playComputer)
+                    self.root.after(1, self._playComputer)
             
 
     # Called after a user playing Player v.s. Player LAN places a piece on the board.
     # Gets the move from the opponent by calling the client's getMove function, and then plays and displays the new board state.
     # If the opponent has quit, the game display is cleared and the user is notified.
-    def lanGetDisplayMove(self):
+    def _lanGetDisplayMove(self):
         if not self.playing:
             return
         row, col = self.client.getMove()
         if (row, col) == (-1, -1):
             self.playing = False
-            self.updateGameFrame()
-            self.updateOptionFrame()
+            self._updateGameFrame()
+            self._updateOptionFrame()
             self.currGameRecord.game.winner = Game.P1 if self.currPlayers[Game.P1] == Player.MAIN else Game.P2
-            self.addUserResult(self.player)
-            self.createNotificationWin("Opponent quit", "Your opponent has quit early - you have won the game (and your profile has been updated with the result)")
+            self._addUserResult(self.player)
+            self._createNotificationWin("Opponent quit", "Your opponent has quit early - you have won the game (and your profile has been updated with the result)")
             return
-        self.play(row, col)
-        self.updateState()
+        self._play(row, col)
+        self._updateState()
 
     # Updates the display with the current game information such as the number of captured pieces and the board state.
-    def updateState(self):
+    def _updateState(self):
         self.p1CapLabel.config(text=f"Player 1 captured pairs: {len(self.currGameRecord.game.captures[Game.P1])}")
         self.p2CapLabel.config(text=f"Player 2 captured pairs: {len(self.currGameRecord.game.captures[Game.P2])}")
 
@@ -921,11 +927,11 @@ class Gui(Ui):
                 if self.currGameRecord.game.board[row][col] == self.currentBoard[row][col] and (row, col) not in prevMoves:
                     continue
                 if self.markLastPiece and prevMoves[0] == (row, col):
-                    self.updateCell(row, col, self.currGameRecord.game.board[row][col], mark=True)
+                    self._updateCell(row, col, self.currGameRecord.game.board[row][col], mark=True)
                 elif self.markLastPiece and prevMoves[1] == (row, col):
-                    self.updateCell(row, col, self.currGameRecord.game.board[row][col])
+                    self._updateCell(row, col, self.currGameRecord.game.board[row][col])
                 else:
-                    self.updateCell(row, col, self.currGameRecord.game.board[row][col])
+                    self._updateCell(row, col, self.currGameRecord.game.board[row][col])
         self.currentBoard = deepcopy(self.currGameRecord.game.board)
 
         if self.currGameRecord.game.player == Game.P1:
@@ -934,7 +940,7 @@ class Gui(Ui):
             self.playerNoPlayingLabel.config(text="Player 2 to play")
 
     # Updates the image displayed for a single board cell given its position and the piece it should hold.
-    def updateCell(self, row, col, piece, mark=False):
+    def _updateCell(self, row, col, piece, mark=False):
         if piece == Game.EMPTY:
             filename = "emptyCell.png"
         elif not mark:
@@ -953,7 +959,7 @@ class Gui(Ui):
         button.image = photoImg
 
     # Updates the headLabel (the central label at the top of the GUI) to show the game winner.
-    def displayWin(self):
+    def _displayWin(self):
         if self.currGameRecord.game.winner == Game.P1:
             msg = "Player 1 WON!"
             colour = "red"
@@ -967,9 +973,9 @@ class Gui(Ui):
         self.headLabel.config(text=msg, fg=colour)
 
     # Updates the game frame (the central frame) to either display the default screen (when no game is playing), or a new board (if a game is being played).
-    def updateGameFrame(self, squareSize=None, canvasSize=None, gridsize=None):
+    def _updateGameFrame(self, squareSize=None, canvasSize=None, gridsize=None):
         self.c.delete("all")
-        self.updateHeadLabel()
+        self._updateHeadLabel()
         if not self.playing:
             bgColour = "#D3D3D3"
             self.p1CapLabel.config(text="", bg=bgColour)
@@ -985,18 +991,18 @@ class Gui(Ui):
                 self.c.create_line([(i, 0), (i, canvasSize)])
             for i in range(0, canvasSize, squareSize):
                 self.c.create_line([(0, i), (canvasSize, i)])
-            self.buttons = self.getButtons(squareSize, gridsize)
-            self.updateState()
+            self.buttons = self._getButtons(squareSize, gridsize)
+            self._updateState()
 
     # Given a move to play, calls the game method's play function to play the move.
     # If the game has ended, the winner is displayed. Otherwise the label stating which player number is playing is switched.
-    def play(self, row, col):
+    def _play(self, row, col):
         self.currGameRecord.game.play(row, col)
         if self.currGameRecord.game.winner != Game.ONGOING:
-            self.displayWin()
+            self._displayWin()
             self.playing = False
             if self.currGameRecord.mode != Mode.LAN:
-                changesMade = self.addResultsToProfile()
+                changesMade = self._addResultsToProfile()
                 if changesMade:
                     if self.currGameRecord.id != -1:
                         self.currGameRecord.whenSaved = datetime.now()
@@ -1004,28 +1010,28 @@ class Gui(Ui):
                         txt = "Your profile has been updated with the game result, and your saved game has been updated."
                     else:
                         txt = "Your profile has been updated with the game result."
-                    self.createNotificationWin("Profile updated", txt)
+                    self._createNotificationWin("Profile updated", txt)
             else:
                 self.client.closeConnection()
-                self.addUserResult(self.player)
-                self.createNotificationWin("Profile updated", "Your profile has been updated with the game result.")
+                self._addUserResult(self.player)
+                self._createNotificationWin("Profile updated", "Your profile has been updated with the game result.")
 
     # Called when starting a Player v.s. Player LAN game.
     # Makes a connection between the client and server and gets an opponent using the client's methods.
     # Calls the playGame function to start the game.
-    def connectAndGetOpp(self):
+    def _connectAndGetOpp(self):
         self.client.makeConnection()
         self.client.getOpponent()
         self.opponent = self.client.opponent
-        self.playGame(self.client.playerNo, Mode.LAN)
+        self._playGame(self.client.playerNo, Mode.LAN)
 
     # Called when starting a Player v.s. Player LAN game.
     # Creates a new client and calls the connectAndGetOpp function to start the client-server interaction.
-    def connectLan(self, playGameWindow):
+    def _connectLan(self, playGameWindow):
         playGameWindow.destroy()
         self.client = Client(self.player)
         self.headLabel.config(text="Waiting for opponent...")
-        x = threading.Thread(target=self.connectAndGetOpp)
+        x = threading.Thread(target=self._connectAndGetOpp)
         x.start()
         
 # The Terminal class is a subclass of the Ui class, and contains all properties and methods required for the terminal-based user interface.
@@ -1036,10 +1042,10 @@ class Terminal(Ui):
 
     # Starts running the terminal UI by displaying the menu.
     def run(self):
-        self.displayMenu()
+        self._displayMenu()
 
     # Displays one of two possible game mode menus (one for guest and one for logged in accounts), asks for a choice from the user, and returns it.
-    def chooseMode(self):
+    def _chooseMode(self):
         memberMenu = """
         Please choose a game mode:
         1. Player v.s. Player
@@ -1053,29 +1059,29 @@ class Terminal(Ui):
         """
         if self.player == Player.GUEST:
             print(guestMenu)
-            c = self.getChoice(1, 2)
+            c = Terminal._getChoice(1, 2)
         else:
             print(memberMenu)
-            c = self.getChoice(1, 3)
+            c = Terminal._getChoice(1, 3)
         return [Mode.PVP, Mode.COMP, Mode.LAN][c-1]
 
     # Asks the user which player they would like to play as (providing both users are not using guest accounts).
-    def choosePlayer(self):
+    def _choosePlayer(self):
         if self.player == Player.GUEST and self.opponent == Player.GUEST:
             return Game.P1
         playerTitle = "the guest" if self.player == Player.GUEST else self.player
         print(f"Would {playerTitle} like to be player 1 or 2? (1/2) ")
-        inp = self.getChoice(1, 2)
+        inp = Terminal._getChoice(1, 2)
         return [Game.P1, Game.P2][inp-1]
 
     # Prints a list of all games saved in the database and gives the user the option to select a game to load or delete.
-    def viewGames(self):
+    def _viewGames(self):
         games = Database.loadAllGames(self.player)
         if not games:
             print("There are no games to view.")
         else:
             for i, gameRecord in enumerate(games):
-                print(f"{i+1}. {self.gameString(gameRecord)}")
+                print(f"{i+1}. {self._gameString(gameRecord)}")
             menu = """
             Choose an option:
             1. Load game
@@ -1084,21 +1090,21 @@ class Terminal(Ui):
             4. Go back
             """
             print(menu)
-            inp = self.getChoice(1, 4)
+            inp = Terminal._getChoice(1, 4)
             if inp == 1:
-                self.loadGame()
+                self._loadGame()
             elif inp == 2:
-                self.deleteGame(games)
+                self._deleteGame(games)
             elif inp == 3:
-                self.exportGameMoveFile(games)
+                self._exportGameMoveFile(games)
 
     # Gets the game mode and asks for additional information needed for the game.
     # Calls the play function to start the game.
-    def playGame(self):
-        mode = self.chooseMode()
+    def _playGame(self):
+        mode = self._chooseMode()
         self.currGameRecord = GameRecord(game=Game(19), mode=mode)
         if mode == Mode.LAN:
-            self.connectLan()
+            self._connectLan()
             player = self.client.playerNo
         else:
             if mode == Mode.PVP:
@@ -1109,8 +1115,8 @@ class Terminal(Ui):
             2. Login
                 """
                 print(menu)
-                if self.getChoice(1, 2) == 2:
-                    self.login(Player.OPP)
+                if Terminal._getChoice(1, 2) == 2:
+                    self._login(Player.OPP)
             elif mode == Mode.COMP:
                 self.opponent = Player.COMP
                 menu = """
@@ -1120,18 +1126,18 @@ class Terminal(Ui):
             3. Hard
                 """
                 print(menu)
-                self.compDifficulty = self.getChoice(1, 3)
-            player = self.choosePlayer()
+                self.compDifficulty = Terminal._getChoice(1, 3)
+            player = self._choosePlayer()
         otherPlayer = Game.P2 if player == Game.P1 else Game.P1
         self.currPlayers[player] = Player.MAIN
         self.currPlayers[otherPlayer] = Player.OPP
-        self.play()
+        self._play()
 
     # Displays one of two main menus (one for guest and one for logged in accounts), and asks for an option from the user.
     # The user's choice is used to call a relevant function to deal with the user's request.
-    def displayMenu(self):
-        guestMethods = {1: self.displayRules, 2: self.playGame, 3: lambda: self.login(Player.MAIN), 4: self.createAccount, 5: quit}
-        memberMethods = {1: self.displayRules, 2: self.playGame, 3: self.viewGames, 4: self.viewProfile, 5: self.logout, 6: quit}
+    def _displayMenu(self):
+        guestMethods = {1: self._displayRules, 2: self._playGame, 3: lambda: self._login(Player.MAIN), 4: self._createAccount, 5: quit}
+        memberMethods = {1: self._displayRules, 2: self._playGame, 3: self._viewGames, 4: self._viewProfile, 5: self._logout, 6: quit}
 
         while 1:
 
@@ -1160,15 +1166,15 @@ class Terminal(Ui):
 
             if self.player == Player.GUEST:
                 print(guestMenu)
-                inp = self.getChoice(1, 5)
+                inp = Terminal._getChoice(1, 5)
                 guestMethods[inp]()
             else:
                 print(memberMenu)
-                inp = self.getChoice(1, 6)
+                inp = Terminal._getChoice(1, 6)
                 memberMethods[inp]()
 
     # Displays the player's profile information.
-    def viewProfile(self):
+    def _viewProfile(self):
         whenSaved, numberOfWins, numberOfLosses, numberOfDraws, score = Database.getPlayer(self.player)
         numberOfSavedGames = len(Database.loadAllGames(self.player))
         numberOfOngoings = len(Database.loadGames(self.player, Game.ONGOING))
@@ -1192,12 +1198,13 @@ class Terminal(Ui):
         print()
         input("Press any key to go back > ")
         print()
-        self.displayMenu()
+        self._displayMenu()
 
     # Displays a message (the input parameter msg) and asks for an input from the user.
     # The input will only be valid if it is one of y or n, and the function will keep asking an input from the user if it isn't.
     # The function returns a boolean value: True for y (yes) or False for n (no).
-    def getYesNo(self, msg):
+    @staticmethod
+    def _getYesNo(msg):
         inp = input(msg)
         while inp not in ["y", "n"]:
             inp = input("Invalid choice. Please enter y or n: ")
@@ -1208,7 +1215,8 @@ class Terminal(Ui):
     # Given two numeric bounds, the function asks for a number as an input.
     # If the input is either not an integer or not between the two bounds inclusive, it is considered invalid and the input is asked for again.
     # The input is then returned from the function.
-    def getChoice(self, lower, upper):
+    @staticmethod
+    def _getChoice(lower, upper):
         while 1:
             try:
                 inp = int(input("> "))
@@ -1221,11 +1229,11 @@ class Terminal(Ui):
 
     # Given a player that wants to log in, the login function logs the player in given their username and password are correct.
     # A username and password are checked to be correct by calling the database's checkPassword function.
-    def login(self, player):
+    def _login(self, player):
         while 1:
             username = input("Username: ")
             if player == Player.OPP and self.player == username:
-                if self.getYesNo("That player is already logged in. Try again? (y/n) "):
+                if Terminal._getYesNo("That player is already logged in. Try again? (y/n) "):
                     continue
                 else:
                     return
@@ -1237,21 +1245,21 @@ class Terminal(Ui):
                 else:
                     self.opponent = username
                 return
-            elif not self.getYesNo("Username or password incorrect. Try again? (y/n) "):
+            elif not Terminal._getYesNo("Username or password incorrect. Try again? (y/n) "):
                 return
 
     # Logs out the currently logged in player.
-    def logout(self):
+    def _logout(self):
         self.player = Player.GUEST
         print("Logout successful.")
 
     # Creates an account by asking for a username and password for the user. The username must be checked to be unique by calling the isUniqueUsername database function.
     # The new account details are saved as a new Player entry to the database by calling the savePlayer database function.
-    def createAccount(self):
+    def _createAccount(self):
         while 1:
             username = input("Enter username: ")
             if not Database.isUniqueUsername(username):
-                if self.getYesNo("Sorry, that username has already been taken. Try again? (y/n) "):
+                if Terminal._getYesNo("Sorry, that username has already been taken. Try again? (y/n) "):
                     continue
                 else:
                     return
@@ -1262,11 +1270,11 @@ class Terminal(Ui):
                 print("Account creation successful!")
                 self.player = username
                 return
-            elif not self.getYesNo("Passwords do not match. Try again? (y/n) "):
+            elif not Terminal._getYesNo("Passwords do not match. Try again? (y/n) "):
                 return
 
     # Given a board and the captured pieces, the printState function returns a string defining how the board and captures are to be displayed on the screen.
-    def printState(self):
+    def _printState(self):
         boardsize = len(self.currGameRecord.game.board)
         boardString = "Board:\n\n"
         boardString += "   " + " ".join([chr(65+i) for i in range(boardsize)]) + "\n"
@@ -1289,7 +1297,7 @@ class Terminal(Ui):
         print(boardString)
 
     # Given a move, checks if the move is valid. If it is valid it will return the move, otherwise it will raise an error.
-    def getRowCol(self, move):
+    def _getRowCol(self, move):
         if len(move) == 0:
             raise GameError("No move played")
         row, col = move[:-1], move[-1]
@@ -1311,49 +1319,50 @@ class Terminal(Ui):
             return row, col
 
     # Given a game to save, the saveGame function saves the game to the database by calling the database's own saveGame procedure.
-    def saveGame(self):
+    def _saveGame(self):
         self.currGameRecord.whenSaved = datetime.now()
         if self.currGameRecord.id != -1:
             Database.updateGame(self.currGameRecord)
         else:
             name = input("Enter name to save game as: ")
             self.currGameRecord.name = name
-            Database.saveGame(self.getUsernameOfPlayerNumber(Game.P1), self.getUsernameOfPlayerNumber(Game.P2), self.currGameRecord)
+            Database.saveGame(self._getUsernameOfPlayerNumber(Game.P1), self._getUsernameOfPlayerNumber(Game.P2), self.currGameRecord)
         print("Game saved successfully.")
 
-    def exportGameMoveFile(self, games):
+    # Given games, it gives the user a choice to choose which game to export moves for, and then does this by calling the Ui exportGameMoves function.
+    def _exportGameMoveFile(self, games):
         print("Which game's moves would you like to export? (e.g. 1, 2...)")
-        inp = self.getChoice(1, len(games))
+        inp = Terminal._getChoice(1, len(games))
         gameRecord = games[inp-1]
-        Ui.exportGameMoves(gameRecord)
+        Ui._exportGameMoves(gameRecord)
         print(f"Game move record for '{gameRecord.name}' successfully created.")
 
     # Displays a list of the ongoing games on the screen, and asks the user to choose one to load.
     # Once a game has been chosen, the play function is called to play the loaded game.
-    def loadGame(self):
+    def _loadGame(self):
         games = Database.loadGames(self.player, Game.ONGOING)
         if not games:
             print("There are no ongoing games.")
         else:
             print("Ongoing games:")
             for i, gameRecord in enumerate(games):
-                print(f"{i+1}. {self.gameString(gameRecord)}")
+                print(f"{i+1}. {self._gameString(gameRecord)}")
             print("Select a game (e.g. 1, 2...)")
-            inp = self.getChoice(1, i+1)
+            inp = Terminal._getChoice(1, i+1)
             self.currGameRecord = games[inp-1]
-            self.play()
+            self._play()
 
     # Given a list of games, the deleteGame function asks for a choice from the player for which game to delete.
     # The specified game from the list is then deleted by calling the database's deleteGame procedure.
-    def deleteGame(self, games):
+    def _deleteGame(self, games):
         print("Which game would you like to delete? (e.g. 1, 2...)")
-        inp = self.getChoice(1, len(games))
+        inp = Terminal._getChoice(1, len(games))
         Database.deleteGame(games[inp-1].id)
         print(f"Game '{games[inp-1].name}' successfully deleted.")
 
     # Called when a non-move choice is entered by the user whilst playing a game: one of s (save) and u (undo).
     # The choice is then processed by the processChoice function given the choice and the game being played.
-    def processChoice(self, choice):
+    def _processChoice(self, choice):
         if choice == "s":
             nonGuests = [player for player in [self.player, self.opponent] if player != Player.GUEST and player != Player.COMP]
             if nonGuests and self.currGameRecord.mode != Mode.LAN:
@@ -1361,9 +1370,9 @@ class Terminal(Ui):
                         playerString = f"{nonGuests[0]}'s and {nonGuests[1]}'s accounts"
                     else:
                         playerString = f"{nonGuests[0]}'s account"
-                    yes = self.getYesNo(f"Would you like to save your game to {playerString}? (y/n) ")
+                    yes = Terminal._getYesNo(f"Would you like to save your game to {playerString}? (y/n) ")
                     if yes:
-                        self.saveGame()
+                        self._saveGame()
             else:
                 print("Save not available")
         elif choice == "u":
@@ -1373,7 +1382,7 @@ class Terminal(Ui):
                 except GameError as e:
                     print(f"Error: {e}")
                 else:
-                    self.printState()
+                    self._printState()
             elif self.currGameRecord.mode == Mode.COMP:
                 try:
                     self.currGameRecord.game.undo()
@@ -1381,19 +1390,19 @@ class Terminal(Ui):
                 except GameError as e:
                     print(f"Error: {e}")
                 else:
-                    self.printState()
+                    self._printState()
             else:
                 print("Undo not available for LAN games")
         print()
 
     # Called to get a choice or a move from the user whilst playing the game. This is then returned from the function.
-    def getMove(self):
+    def _getMove(self):
         while 1:
             choice = input("Enter move: ")
             if choice == "q":
                 willQuit = True
                 if self.currGameRecord.mode == Mode.LAN:
-                    willQuit = self.getYesNo("Are you sure? Quitting early will mean you automatically lose the game. (y/n) ")
+                    willQuit = Terminal._getYesNo("Are you sure? Quitting early will mean you automatically lose the game. (y/n) ")
                 if not willQuit:
                     continue
                 return choice, False, True
@@ -1403,14 +1412,14 @@ class Terminal(Ui):
                 return choice, False, False
             else:
                 try:
-                    row, col = self.getRowCol(choice)
+                    row, col = self._getRowCol(choice)
                     return (row, col), True, False
                 except GameError as err:
                     print(f"Error: {err}. Try again.")
 
     # Performs a loop which asks for moves from the user and the opponent until either the game ends or the user quits.
     # After each move the new board state is displayed on the screen.
-    def play(self):
+    def _play(self):
         print("\nTo enter a move, enter the row followed by the column e.g. 1A or 1a.")
         print("Other than entering a move you can type q to quit, s to save, and u to undo.\n")
 
@@ -1421,16 +1430,16 @@ class Terminal(Ui):
                 self.client.makeMove((gridsize//2, gridsize//2))
         else:
             self.currGameRecord.game.play(gridsize//2, gridsize//2)
-            if self.getUsernameOfPlayerNumber(self.currGameRecord.game.player) == Player.COMP:
+            if self._getUsernameOfPlayerNumber(self.currGameRecord.game.player) == Player.COMP:
                 row, col = Ai.play(self.currGameRecord.game.board, self.currGameRecord.game.captures, self.currGameRecord.game.player, self.compDifficulty)
                 print(f"COMPUTER PLAYED: {row+1}{chr(col+65)}")
                 self.currGameRecord.game.play(row, col)
 
         while self.currGameRecord.game.winner == Game.ONGOING:
-            self.printState()
+            self._printState()
             playerStr = "Player 1 to play" if self.currGameRecord.game.player == Game.P1 else "Player 2 to play"
             print(playerStr)
-            if self.getUsernameOfPlayerNumber(self.currGameRecord.game.player) == Player.COMP:
+            if self._getUsernameOfPlayerNumber(self.currGameRecord.game.player) == Player.COMP:
                 row, col = Ai.play(self.currGameRecord.game.board, self.currGameRecord.game.captures, self.currGameRecord.game.player, self.compDifficulty)
                 print(f"COMPUTER PLAYED: {row+1}{chr(col+65)}")
                 self.currGameRecord.game.play(row, col)
@@ -1440,7 +1449,7 @@ class Terminal(Ui):
                 if (row, col) == (-1, -1):
                     self.client.closeConnection()
                     self.currGameRecord.game.winner = Game.P1 if self.currPlayers[Game.P1] == Player.MAIN else Game.P2
-                    self.addUserResult(self.player)
+                    self._addUserResult(self.player)
                     print("Your opponent has quit - you have automatically won the game.")
                     print()
                     print("Your profile has been updated with the game result.")
@@ -1450,13 +1459,13 @@ class Terminal(Ui):
                     self.currGameRecord.game.play(row, col)
                     print(f"{self.client.opponent} played: {row+1}{chr(col+65)}")
             else:
-                choice, isMove, end = self.getMove()
+                choice, isMove, end = self._getMove()
                 if not isMove:
-                    self.processChoice(choice)
+                    self._processChoice(choice)
                     if end:
                         if self.currGameRecord.mode == Mode.LAN:
                             self.currGameRecord.game.winner = Game.P1 if self.currPlayers[Game.P1] == Player.OPP else Game.P2
-                            self.addUserResult(self.player)
+                            self._addUserResult(self.player)
                             print("Your profile has been updated with the game result.")
                             self.client.makeMove((-1, -1))
                             self.client.closeConnection()
@@ -1465,7 +1474,7 @@ class Terminal(Ui):
                     row, col = choice
                     self.currGameRecord.game.play(row, col)
                     if self.currGameRecord.mode == Mode.LAN: self.client.makeMove((row, col))
-        self.printState()
+        self._printState()
         if self.currGameRecord.game.winner == Game.P1:
             print("Player 1 has won!")
         elif self.currGameRecord.game.winner == Game.P2:
@@ -1475,10 +1484,10 @@ class Terminal(Ui):
         
         if self.currGameRecord.mode == Mode.LAN:
             self.client.closeConnection()
-            self.addUserResult(self.player)
+            self._addUserResult(self.player)
             print("Your profile has been updated with the game result.")
         else:
-            changesMade = self.addResultsToProfile()
+            changesMade = self._addResultsToProfile()
             if changesMade:
                 if self.currGameRecord.id != -1:
                     self.currGameRecord.whenSaved = datetime.now()
@@ -1490,7 +1499,7 @@ class Terminal(Ui):
             input("Enter any key to go back > ")
 
     # Creates a new client instance, connects it to the server, and obtains an opponent.
-    def connectLan(self):
+    def _connectLan(self):
         self.client = Client(self.player)
         print("Waiting for connection...")
         self.client.makeConnection()
@@ -1503,10 +1512,13 @@ class Terminal(Ui):
         print(f"Opponent: {self.opponent} (player {oppNo})")
         print(f"You are player {playerNo}")
 
-    def displayRules(self):
-        print(Ui.getRulesText())
+    # Prints the rules of the game, and returns the user to the main menu.
+    def _displayRules(self):
+        print(Ui._getRulesText())
         print()
         input("Press any key to go back > ")
+        print()
+        self._displayMenu()
 
 if __name__ == "__main__":
     pass

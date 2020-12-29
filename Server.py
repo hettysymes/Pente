@@ -36,11 +36,11 @@ class Server:
         while 1:
             s.listen(1)
             c, addr = s.accept()
-            x = threading.Thread(target=self.handleClient, args=(c,))
+            x = threading.Thread(target=self._handleClient, args=(c,))
             x.start()
 
     # Matches two online users waiting to play together, and sends messages notifying each client of their opponent.
-    def getOpponent(self):
+    def _getOpponent(self):
         notPlaying = []
         for username, status in self.onlineUsers.items():
             if status[1] == False: notPlaying.append(username)
@@ -54,7 +54,7 @@ class Server:
             self.onlineUsers[u2][0].send(pickle.dumps(Msg(None, (u1, p2))))
 
     # Called when a client message is received, and gives the appropriate response depending on the message.
-    def handleClient(self, c):
+    def _handleClient(self, c):
         while True:
             recvMsg = c.recv(1024)
             if not recvMsg:
@@ -69,7 +69,7 @@ class Server:
                 c.send(pickle.dumps("ACK"))
             elif msg.data == Cmd.GETOPP:
                 self.onlineUsers[msg.sender][1] = False
-                self.getOpponent()
+                self._getOpponent()
             elif msg.data == Cmd.GETMOVE:
                 message = None
                 while not message:
