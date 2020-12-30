@@ -1446,7 +1446,7 @@ class Terminal(Ui):
     def _play(self):
         print("\nTo enter a move, enter the row followed by the column e.g. 1A or 1a.")
         print("Other than entering a move you can type q to quit, s to save, u to undo, or h to get a suggested move.")
-        print("Note: saves, undos and suggested moves are not available for Player v.s. Player LAN games.\n")
+        print("Note: saves, undoes and suggested moves are not available for Player v.s. Player LAN games.\n")
 
         gridsize = len(self.currGameRecord.game.board)
         if self.currGameRecord.mode == Mode.LAN:
