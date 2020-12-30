@@ -337,6 +337,10 @@ class Gui(Ui):
     def playerNoPlayingLabel(self, playerNoPlayingLabel):
         self._playerNoPlayingLabel = playerNoPlayingLabel
 
+    # Starts running the GUI by calling Tkinter's mainloop subroutine.
+    def run(self):
+        self.root.mainloop()
+
     # Creates a window which displays the rules of the game.
     def _createDisplayRulesWin(self):
         displayRulesWin = Toplevel(self.root)
@@ -569,21 +573,40 @@ class Gui(Ui):
             Button(self.optionFrame, text="Quit game", command=self._confirmQuit).grid(row=2, column=0, padx=10, pady=5)
             txt = "Switch Mark Last Piece OFF" if self.markLastPiece else "Switch Mark Last Piece ON"
             Button(self.optionFrame, text=txt, command=self._switchMarkPiece).grid(row=3, column=0, padx=10, pady=5)
+            if self.currGameRecord.mode != Mode.LAN:
+                Button(self.optionFrame, text="Get suggested move", command=self._createGetSuggestedMoveWin).grid(row=4, column=0, padx=10, pady=5)
             if self.currGameRecord.mode != Mode.PVP:
                 if self.currPlayers[Game.P1] == Player.MAIN:
-                    Label(self.optionFrame, text="YOU ARE PLAYER 1").grid(row=5, column=0, padx=10, pady=5)
+                    Label(self.optionFrame, text="YOU ARE PLAYER 1").grid(row=6, column=0, padx=10, pady=5)
                 else:
-                    Label(self.optionFrame, text="YOU ARE PLAYER 2").grid(row=5, column=0, padx=10, pady=5)
+                    Label(self.optionFrame, text="YOU ARE PLAYER 2").grid(row=6, column=0, padx=10, pady=5)
             if self.player != Player.GUEST or (self.opponent not in [Player.GUEST, Player.COMP]):
                 if self.currGameRecord.id == -1:
                     command = self._createSaveGameWindow
                 else:
                     command = self._createSavedGameConfirmationWindow
                 if self.currGameRecord.mode != Mode.LAN:
-                    Button(self.optionFrame, text="Save game", command=command).grid(row=4, column=0, padx=10, pady=5)
+                    Button(self.optionFrame, text="Save game", command=command).grid(row=5, column=0, padx=10, pady=5)
         else:
             Label(self.optionFrame, text="Start playing?").grid(row=0, column=0, padx=10, pady=5)
+
+    # Creates a window which displays a suggested move for the player
+    def _createGetSuggestedMoveWin(self):
+        if not self.playing:
+            self._createNotificationWin("Suggested move", "You can't get a suggested move when the game has ended")
+            return
+        suggestedMoveWin = Toplevel(self.root)
+        suggestedMoveWin.title("Get suggested move")
+        moveLabel = Label(suggestedMoveWin, text="Getting suggested move... (please don't exit the window)")
+        moveLabel.grid(row=0, column=0, padx=10, pady=5)
+        x = threading.Thread(target=self._getSuggestedMove, args=(suggestedMoveWin, moveLabel))
+        x.start()
     
+    def _getSuggestedMove(self, suggestedMoveWin, moveLabel):
+        row, col = Ai.play(self.currGameRecord.game.board, self.currGameRecord.game.captures, self.currGameRecord.game.player, 3)
+        moveLabel.config(text=f"Suggested move: {Game.getPenteMoveNotation(row, col, len(self.currGameRecord.game.board), False)}")
+        Button(suggestedMoveWin, text="Ok", command=suggestedMoveWin.destroy).grid(row=1, column=0, padx=10, pady=5)
+
     # Switches the status of the "mark last piece" option and updates the GUI display
     def _switchMarkPiece(self):
         self.markLastPiece = not self.markLastPiece
@@ -805,10 +828,6 @@ class Gui(Ui):
             self._updateState()
             if self._getUsernameOfPlayerNumber(self.currGameRecord.game.player) == Player.COMP:
                 self._playComputer()
-
-    # Starts running the GUI by calling Tkinter's mainloop function.
-    def run(self):
-        self.root.mainloop()
 
     # Calls functions which create the images for the empty board cells and the player pieces.
     def _createImages(self, squareSize):
@@ -1393,6 +1412,13 @@ class Terminal(Ui):
                     self._printState()
             else:
                 print("Undo not available for LAN games")
+        elif choice == "h":
+            if self.currGameRecord.mode == Mode.LAN:
+                print("Suggested moves are not available for LAN games")
+            else:
+                print("Getting suggested move...")
+                row, col = Ai.play(self.currGameRecord.game.board, self.currGameRecord.game.captures, self.currGameRecord.game.player, 3)
+                print(f"Suggested move: {row+1}{chr(col+65)}")
         print()
 
     # Called to get a choice or a move from the user whilst playing the game. This is then returned from the function.
@@ -1406,9 +1432,7 @@ class Terminal(Ui):
                 if not willQuit:
                     continue
                 return choice, False, True
-            elif choice == "s":
-                return choice, False, False
-            elif choice == "u":
+            elif choice in ["s", "u", "h"]:
                 return choice, False, False
             else:
                 try:
@@ -1421,7 +1445,8 @@ class Terminal(Ui):
     # After each move the new board state is displayed on the screen.
     def _play(self):
         print("\nTo enter a move, enter the row followed by the column e.g. 1A or 1a.")
-        print("Other than entering a move you can type q to quit, s to save, and u to undo.\n")
+        print("Other than entering a move you can type q to quit, s to save, u to undo, or h to get a suggested move.")
+        print("Note: saves, undos and suggested moves are not available for Player v.s. Player LAN games.\n")
 
         gridsize = len(self.currGameRecord.game.board)
         if self.currGameRecord.mode == Mode.LAN:
