@@ -210,6 +210,3 @@ class GameRecord:
         self.game = game
         self.mode = mode
 
-if __name__ == "__main__":
-    pass
-

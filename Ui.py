@@ -602,6 +602,7 @@ class Gui(Ui):
         x = threading.Thread(target=self._getSuggestedMove, args=(suggestedMoveWin, moveLabel))
         x.start()
     
+    # Displays the suggested move on the suggested move window
     def _getSuggestedMove(self, suggestedMoveWin, moveLabel):
         row, col = Ai.play(self.currGameRecord.game.board, self.currGameRecord.game.captures, self.currGameRecord.game.player, 3)
         moveLabel.config(text=f"Suggested move: {Game.getPenteMoveNotation(row, col, len(self.currGameRecord.game.board), False)}")
@@ -1544,6 +1545,3 @@ class Terminal(Ui):
         input("Press any key to go back > ")
         print()
         self._displayMenu()
-
-if __name__ == "__main__":
-    pass

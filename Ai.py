@@ -225,6 +225,3 @@ def play(board, captures, player, difficulty):
         DEPTH = 2
         eval = minimax(board, captures, player, root, DEPTH)
         return eval[1], eval[2]
-
-if __name__ == "__main__":
-    pass

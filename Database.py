@@ -320,6 +320,3 @@ def deleteGame(gameId):
     WHERE PlayerGame.gameId = ?;
     """
     editTable(recordSQL, (gameId,))
-
-if __name__ == "__main__":
-    pass
