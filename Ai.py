@@ -140,30 +140,8 @@ def getValue(board, captures):
     val += 999999999999*(getNumberOfWinOpportunities(board, captures, Game.P1) - getNumberOfWinOpportunities(board, captures, Game.P2))
     return val
 
-# Returns whether it can find an immediate good move, along with the move if it can find one (either an immediate win or capture).
-def getImmediateMove(board, captures, player):
-    move = [None, 0]
-    opp = Game.P1 if player == Game.P2 else Game.P2
-    for row in range(len(board)):
-        for col in range(len(board)):
-            if board[row][col] != Game.EMPTY:
-                continue
-            tempBoard, tempCaptures = Game.newState(board, captures, player, row, col)[:-1]
-            if Game.getWinner(tempBoard, tempCaptures) == player:
-                return True, (row, col)
-            elif len(tempCaptures[player]) > len(captures[player]) and move[1] < 1:
-                move = [(row, col), 1]
-            tempBoard, tempCaptures = Game.newState(board, captures, opp, row, col)[:-1]
-            if Game.getWinner(tempBoard, tempCaptures) == opp and move[1] < 2:
-                move = [(row, col), 2]
-            elif len(tempCaptures[opp]) > len(captures[opp]) and move[1] < 1:
-                move = [(row, col), 1]
-    if move[0] != None:
-        return True, move[0]
-    return False, ()
-
 # Performs the minimax algorithm to a specified depth, and returns the calculated move for the AI.
-def minimax(board, captures, player, node, depth, alpha=(-inf,), beta=(inf,), movesToAnalyse=3):
+def minimax(board, captures, player, node, depth, movesToAnalyse, alpha=(-inf,), beta=(inf,)):
 
     winner = Game.getWinner(board, captures)
     if winner != Game.ONGOING:
@@ -191,7 +169,7 @@ def minimax(board, captures, player, node, depth, alpha=(-inf,), beta=(inf,), mo
         for _ in range(movesToAnalyse):
             if len(childrenValues) == 0: break
             value, tempBoard, tempCaptures, child = childrenValues.pop()
-            eval = minimax(tempBoard, tempCaptures, opponent, child, depth-1, alpha, beta)
+            eval = minimax(tempBoard, tempCaptures, opponent, child, depth-1, movesToAnalyse, alpha, beta)
             maxEval = max([maxEval, eval], key=itemgetter(0))
             alpha = max([alpha, eval], key=itemgetter(0))
             if alpha[0] >= beta[0]:
@@ -203,7 +181,7 @@ def minimax(board, captures, player, node, depth, alpha=(-inf,), beta=(inf,), mo
         for _ in range(movesToAnalyse):
             if len(childrenValues) == 0: break
             value, tempBoard, tempCaptures, child = childrenValues.pop()
-            eval = minimax(tempBoard, tempCaptures, opponent, child, depth-1, alpha, beta)
+            eval = minimax(tempBoard, tempCaptures, opponent, child, depth-1, movesToAnalyse, alpha, beta)
             minEval = min([minEval, eval], key=itemgetter(0))
             beta = min([beta, eval], key=itemgetter(0))
             if beta[0] <= alpha[0]:
@@ -214,14 +192,13 @@ def minimax(board, captures, player, node, depth, alpha=(-inf,), beta=(inf,), mo
 def play(board, captures, player, difficulty):
     if difficulty == 1:
         return pickRandomMove(board)
-    elif difficulty == 2:
-        canMake, move = getImmediateMove(board, captures, player)
-        if canMake:
-            return move
-        else:
-            return pickRandomMove(board)
     else:
         root = Node(None, None, root=True)
-        DEPTH = 2
-        eval = minimax(board, captures, player, root, DEPTH)
+        if difficulty == 2:
+            DEPTH = 1
+            MOVESTOANALYSE = 1
+        else:
+            DEPTH = 2
+            MOVESTOANALYSE = 3
+        eval = minimax(board, captures, player, root, DEPTH, MOVESTOANALYSE)
         return eval[1], eval[2]
