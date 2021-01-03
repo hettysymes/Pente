@@ -8,11 +8,11 @@ class GameError(Exception):
 # The Game class contains all properties, game constants, and methods required by a game.
 class Game:
 
-    P1 = "P1"
-    P2 = "P2"
-    EMPTY = "EMPTY"
-    DRAW = "DRAW"
-    ONGOING = "ONGOING"
+    P1 = 1
+    P2 = 2
+    EMPTY = 3
+    DRAW = 4
+    ONGOING = 5
 
     def __init__(self, boardsize):
         self._board = [[Game.EMPTY for _ in range(boardsize)] for _ in range(boardsize)]

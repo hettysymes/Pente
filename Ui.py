@@ -1,7 +1,7 @@
 from copy import deepcopy
 from Game import Game, GameError, GameRecord, MoveStack
 from colorama import Fore, Style
-from enum import Enum, auto
+from enum import Enum
 from datetime import datetime
 import Database
 import Ai
@@ -12,18 +12,11 @@ from PIL import Image, ImageDraw
 from Client import Client
 import threading
 
-# The Player class defines different player types.
-class Player(Enum):
-    MAIN = auto()
-    OPP = auto()
-    GUEST = auto()
-    COMP = auto()
+# The Player Enum class defines different player types.
+Player = Enum("Player", ["MAIN", "OPP", "GUEST", "COMP"])
 
-# The Mode class defines different playing modes.
-class Mode:
-    PVP = "PVP"
-    COMP = "COMP"
-    LAN = "LAN"
+# The Mode Enum class defines different playing modes.
+Mode = Enum("Mode", ["PVP", "COMP", "LAN"])
 
 # The Ui class contains attributes and methods shared by the two Uis: Terminal and Gui.
 # Ui subclasses are run via the run method.

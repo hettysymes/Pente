@@ -49,7 +49,7 @@ def createDatabase():
     playerSQL = """
     CREATE TABLE Player(
     username TEXT PRIMARY KEY,
-    whenSaved TEXT NOT NULL,
+    whenSaved BLOB NOT NULL,
     numberOfWins INTEGER NOT NULL,
     numberOfLosses INTEGER NOT NULL,
     numberOfDraws INTEGER NOT NULL,
@@ -66,10 +66,10 @@ def createDatabase():
     CREATE TABLE Game(
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
-	whenSaved TEXT NOT NULL,
+	whenSaved BLOB NOT NULL,
 	game BLOB NOT NULL,
-    winner TEXT NOT NULL,
-    mode TEXT NOT NULL
+    winner INTEGER NOT NULL,
+    mode BLOB NOT NULL
     );"""
 
     playergameSQL = """
@@ -146,7 +146,7 @@ def addPassword(username, password):
 # Given a username, password, and whenSaved (the datetime the account was created) the username and password is added to the hash table, and a new Player entry is made in the database's Player table.
 def savePlayer(username, password, whenSaved):
     addPassword(username, password)
-    whenSaved = datetime.strftime(whenSaved, "%d/%m/%Y, %H:%M:%S")
+    whenSaved = pickle.dumps(whenSaved)
     recordSQL = """
     INSERT INTO Player(username, whenSaved, numberOfWins, numberOfLosses, numberOfDraws, score)
     VALUES(?, ?, 0, 0, 0, 0);
@@ -161,7 +161,7 @@ def getPlayer(username):
     WHERE username = ?;
     """
     whenSaved, numberOfWins, numberOfLosses, numberOfDraws, score = getRecords(recordSQL, (username,))[0]
-    whenSaved = datetime.strptime(whenSaved, "%d/%m/%Y, %H:%M:%S")
+    whenSaved = pickle.loads(whenSaved)
     return [whenSaved, numberOfWins, numberOfLosses, numberOfDraws, score]
 
 # Adds a game result to the player's profile, and updates the player's score depending on the result.
@@ -211,10 +211,10 @@ def isUniqueUsername(username):
 # Given the usernames of the players and the game record, the saveGame function saves the game into the Game table, and also associates it with the Player entries in the PlayerGame table.
 def saveGame(username1, username2, gameRecord):
     name = gameRecord.name
-    whenSaved = gameRecord.whenSaved.strftime("%d/%m/%Y, %H:%M:%S")
+    whenSaved = pickle.dumps(gameRecord.whenSaved)
     game = pickle.dumps(gameRecord.game)
     winner = gameRecord.game.winner
-    mode = gameRecord.mode
+    mode = pickle.dumps(gameRecord.mode)
 
     recordSQL = """
     INSERT INTO Game(name, whenSaved, game, winner, mode)
@@ -231,7 +231,7 @@ def saveGame(username1, username2, gameRecord):
 
 # Given a game record, updates the game with the same id in the Game table with the new game information.
 def updateGame(gameRecord):
-    whenSaved = gameRecord.whenSaved.strftime("%d/%m/%Y, %H:%M:%S")
+    whenSaved = pickle.dumps(gameRecord.whenSaved)
     game = pickle.dumps(gameRecord.game)
     winner = gameRecord.game.winner
     id = gameRecord.id
@@ -246,9 +246,10 @@ def updateGame(gameRecord):
 def parseGames(games):
     parsedGames = []
     for game in games:
-        g = list(game) #[id, name, whenSaved, game, winner, mode]
-        g[2] = datetime.strptime(g[2], "%d/%m/%Y, %H:%M:%S") #whenSaved
-        g[3] = pickle.loads(g[3]) #game
+        g = list(game) # [id, name, whenSaved, game, winner, mode]
+        g[2] = pickle.loads(g[2]) # whenSaved
+        g[3] = pickle.loads(g[3]) # game
+        g[5] = pickle.loads(g[5]) # mode
         gameRecord = GameRecord(g[0], g[1], g[2], g[3], g[5])
         parsedGames.append(gameRecord)
     return parsedGames
