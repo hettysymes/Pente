@@ -367,6 +367,7 @@ class Gui(Ui):
     # If the Player v.s. Player mode is chosen, the window is changed to ask the user whether the opponent would like to login.
     def _confirmOppLogin(self, playGameWindow):
         for widget in playGameWindow.winfo_children(): widget.destroy()
+        self.opponent = Player.GUEST
         Label(playGameWindow, text="Would the other player like to login?").grid(row=0, column=0, columnspan=2, padx=10, pady=5)
         Button(playGameWindow, text="Yes", command=partial(self._createLoginWindow, Player.OPP, playGameWindow)).grid(row=1, column=0, padx=5)
         Button(playGameWindow, text="No", command=partial(self._choosePlayer, playGameWindow, Mode.PVP)).grid(row=1, column=1, padx=5)
