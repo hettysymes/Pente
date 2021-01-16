@@ -117,10 +117,12 @@ class Ui:
 
     # Adds each player's result to their profile by calling the addUserResult procedure, and returns if any changes were made.
     def _addResultsToProfile(self):
+        changesMade = False
         for player in [self.player, self.opponent]:
             if player in [Player.COMP, Player.GUEST]: continue
+            changesMade = True
             self._addUserResult(player)
-        return [self.player, self.opponent] != [Player.GUEST, Player.GUEST]
+        return changesMade
 
     # Writes the moves of a given game to a text file (with a given gameRecord) using Pente notation.
     @staticmethod
@@ -424,10 +426,11 @@ class Gui(Ui):
             comboBox = ttk.Combobox(loadGameWindow, values=values, width=100)
             comboBox.current(0)
             comboBox.grid(row=1, column=0, padx=10, pady=5)
-            Button(loadGameWindow, text="Load game", command=partial(self._loadGame, loadGameWindow, comboBox.get(), games)).grid(row=2, column=0, padx=10, pady=5)
+            Button(loadGameWindow, text="Load game", command=partial(self._loadGame, loadGameWindow, comboBox, games)).grid(row=2, column=0, padx=10, pady=5)
 
     # Given the game information of the game being loaded, accesses the database for the game record of the game being loaded by calling the database's loadGames function, and calls the playGame procedure to start the game.
-    def _loadGame(self, loadGameWindow, gameInfo, games):
+    def _loadGame(self, loadGameWindow, comboBox, games):
+        gameInfo = comboBox.get()
         for gameRecord in games:
             if self._gameString(gameRecord) == gameInfo:
                 break
@@ -678,10 +681,11 @@ class Gui(Ui):
         comboBox = ttk.Combobox(exportGameWindow, values=values, width=100)
         comboBox.current(0)
         comboBox.grid(row=1, column=0, padx=10, pady=5)
-        Button(exportGameWindow, text="Export game moves", command=partial(self._exportGameMoveFile, exportGameWindow, comboBox.get(), games)).grid(row=2, column=0, padx=10, pady=5)
+        Button(exportGameWindow, text="Export game moves", command=partial(self._exportGameMoveFile, exportGameWindow, comboBox, games)).grid(row=2, column=0, padx=10, pady=5)
 
     # Given the game information to export a move record for, it creates the file using the Ui exportGameMoves procedure and creates a notification window.
-    def _exportGameMoveFile(self, exportGameWindow, gameInfo, games):
+    def _exportGameMoveFile(self, exportGameWindow, comboBox, games):
+        gameInfo = comboBox.get()
         for gameRecord in games:
             if self._gameString(gameRecord) == gameInfo:
                 break
@@ -701,10 +705,11 @@ class Gui(Ui):
         comboBox = ttk.Combobox(deleteGameWindow, values=values, width=100)
         comboBox.current(0)
         comboBox.grid(row=1, column=0, padx=10, pady=5)
-        Button(deleteGameWindow, text="Delete game", command=partial(self._deleteGame, deleteGameWindow, comboBox.get(), games)).grid(row=2, column=0, padx=10, pady=5)
+        Button(deleteGameWindow, text="Delete game", command=partial(self._deleteGame, deleteGameWindow, comboBox, games)).grid(row=2, column=0, padx=10, pady=5)
 
     # Give game information of the game to delete and a list of games, the function deletes the game from the database using the database's deleteGame procedure.
-    def _deleteGame(self, deleteGameWindow, gameInfo, games):
+    def _deleteGame(self, deleteGameWindow, comboBox, games):
+        gameInfo = comboBox.get()
         for gameRecord in games:
             if self._gameString(gameRecord) == gameInfo:
                 break
@@ -925,12 +930,12 @@ class Gui(Ui):
         try:
             lastStack = self.currGameRecord.game.moveStack.pop()
             prevMoves[0] = lastStack[1:]
-        except:
+        except GameError:
             pass
         else:
             try:
                 prevMoves[1] = self.currGameRecord.game.moveStack.peek()[1:]
-            except:
+            except GameError:
                 pass
             self.currGameRecord.game.moveStack.push(lastStack[0], lastStack[1], lastStack[2])
 

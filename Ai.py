@@ -199,6 +199,6 @@ def play(board, captures, player, difficulty):
             MOVESTOANALYSE = 1
         else:
             DEPTH = 2
-            MOVESTOANALYSE = 3
+            MOVESTOANALYSE = 2
         eval = minimax(board, captures, player, root, DEPTH, MOVESTOANALYSE)
         return eval[1], eval[2]

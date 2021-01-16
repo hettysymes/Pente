@@ -206,7 +206,7 @@ def isUniqueUsername(username):
     WHERE username = ?;
     """
     players = getRecords(recordSQL, (username,))
-    return players == []
+    return len(players) == 0
 
 # Given the usernames of the players and the game record, the saveGame function saves the game into the Game table, and also associates it with the Player entries in the PlayerGame table.
 def saveGame(username1, username2, gameRecord):

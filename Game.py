@@ -182,7 +182,7 @@ class MoveStack:
 
     # Returns True if the stack is empty and False otherwise.
     def isEmpty(self):
-        return self._stack == []
+        return len(self._stack) == 0
 
     # Given a dictionary of captures and a move, the push function pushes this together onto the top of the stack.
     def push(self, captures, row, col):
