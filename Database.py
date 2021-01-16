@@ -69,7 +69,8 @@ def createDatabase():
 	whenSaved BLOB NOT NULL,
 	game BLOB NOT NULL,
     winner INTEGER NOT NULL,
-    mode BLOB NOT NULL
+    mode BLOB NOT NULL,
+    compDifficulty INTEGER NOT NULL
     );"""
 
     playergameSQL = """
@@ -215,13 +216,14 @@ def saveGame(username1, username2, gameRecord):
     game = pickle.dumps(gameRecord.game)
     winner = gameRecord.game.winner
     mode = pickle.dumps(gameRecord.mode)
+    compDifficulty = gameRecord.compDifficulty
 
     recordSQL = """
-    INSERT INTO Game(name, whenSaved, game, winner, mode)
-    VALUES(?, ?, ?, ?, ?);
+    INSERT INTO Game(name, whenSaved, game, winner, mode, compDifficulty)
+    VALUES(?, ?, ?, ?, ?, ?);
     """
     
-    gameId = editTable(recordSQL, (name, whenSaved, game, winner, mode), getId=True)
+    gameId = editTable(recordSQL, (name, whenSaved, game, winner, mode, compDifficulty), getId=True)
 
     invalidUsernames = [Ui.Player.GUEST, Ui.Player.COMP]
     if username1 not in invalidUsernames:
@@ -246,18 +248,18 @@ def updateGame(gameRecord):
 def parseGames(games):
     parsedGames = []
     for game in games:
-        g = list(game) # [id, name, whenSaved, game, winner, mode]
+        g = list(game) # [id, name, whenSaved, game, winner, mode, compDifficulty]
         g[2] = pickle.loads(g[2]) # whenSaved
         g[3] = pickle.loads(g[3]) # game
         g[5] = pickle.loads(g[5]) # mode
-        gameRecord = GameRecord(g[0], g[1], g[2], g[3], g[5])
+        gameRecord = GameRecord(g[0], g[1], g[2], g[3], g[5], g[6])
         parsedGames.append(gameRecord)
     return parsedGames
         
 # Given a username and a winner, the function returns all games which were played by the player with the username and had the specified winner.
 def loadGames(username, winner):
     recordSQL = """
-    SELECT Game.id, Game.name, Game.whenSaved, Game.game, Game.winner, Game.mode
+    SELECT Game.id, Game.name, Game.whenSaved, Game.game, Game.winner, Game.mode, Game.compDifficulty
     FROM Game
     INNER JOIN PlayerGame ON PlayerGame.gameId = Game.id
     WHERE PlayerGame.username = ? AND Game.winner = ?
@@ -269,7 +271,7 @@ def loadGames(username, winner):
 # Given a username, returns all the games that were played by the player with the username.
 def loadAllGames(username):
     recordSQL = """
-    SELECT Game.id, Game.name, Game.whenSaved, Game.game, Game.winner, Game.mode
+    SELECT Game.id, Game.name, Game.whenSaved, Game.game, Game.winner, Game.mode, Game.compDifficulty
     FROM Game
     INNER JOIN PlayerGame ON PlayerGame.gameId = Game.id
     WHERE PlayerGame.username = ?
@@ -281,7 +283,7 @@ def loadAllGames(username):
 # Given an id of a game, returns the information of the game stored in the Game table with that id.
 def getGame(id):
     recordSQL = """
-    SELECT Game.id, Game.name, Game.whenSaved, Game.game, Game.winner, Game.mode
+    SELECT Game.id, Game.name, Game.whenSaved, Game.game, Game.winner, Game.mode, Game.compDifficulty
     FROM Game
     WHERE id = ?;
     """

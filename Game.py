@@ -203,10 +203,11 @@ class MoveStack:
 # The GameRecord class defines the datatype which all game information is stored as in the datatbase.
 class GameRecord:
 
-    def __init__(self, id=-1, name=-1, whenSaved=-1, game=-1, mode=-1):
+    def __init__(self, id=-1, name=-1, whenSaved=-1, game=-1, mode=-1, compDifficulty=-1):
         self.id = id
         self.name = name
         self.whenSaved = whenSaved
         self.game = game
         self.mode = mode
+        self.compDifficulty = compDifficulty
 

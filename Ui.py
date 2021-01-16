@@ -28,7 +28,6 @@ class Ui:
         self._currPlayers = {Game.P1: Player.MAIN, Game.P2: Player.OPP}
         self._currGameRecord = None
         self._client = None
-        self._compDifficulty = None
 
     @property
     def player(self):
@@ -70,14 +69,6 @@ class Ui:
     def client(self, client):
         self._client = client
 
-    @property
-    def compDifficulty(self):
-        return self._compDifficulty
-
-    @compDifficulty.setter
-    def compDifficulty(self, compDifficulty):
-        self._compDifficulty = compDifficulty
-
     # Given a player (one of Game.P1 and Game.P2), the function returns the username of that player number (or Player.GUEST if the player is not logged in, or Player.COMP if the player is a computer).
     def _getUsernameOfPlayerNumber(self, player):
         if self.currPlayers[player] == Player.MAIN:
@@ -85,13 +76,19 @@ class Ui:
         else:
             return self.opponent
 
+    # Given a computer difficulty level (i.e. 1, 2 or 3) the function returns a string of one of Easy, Medium and Hard
+    @staticmethod
+    def _convCompDifficulty(compDifficulty):
+        return {1: "Easy", 2: "Medium", 3: "Hard"}[compDifficulty]
+
     # Given a gameRecord (of the GameRecord datatype), returns a string summarising the information in the gameRecord.
-    def _gameString(self, gameRecord):
+    @staticmethod
+    def _gameString(gameRecord):
         players = [Database.getPlayerGameUsername(gameRecord.id, Game.P1), Database.getPlayerGameUsername(gameRecord.id, Game.P2)]
         for i in range(2):
             if players[i] == False:
                 if gameRecord.mode == Mode.COMP:
-                    players[i] = "Computer"
+                    players[i] = f"Computer({Ui._convCompDifficulty(gameRecord.compDifficulty)})"
                 else:
                     players[i] = "Guest"
         mode = f"{players[0]} v.s. {players[1]}"
@@ -123,6 +120,20 @@ class Ui:
             changesMade = True
             self._addUserResult(player)
         return changesMade
+
+    # When loading a game, finds from the database which player played as which player number and returns the main player (one of P1 and P2)
+    def _loadPlayers(self):
+        players = [Database.getPlayerGameUsername(self.currGameRecord.id, Game.P1), Database.getPlayerGameUsername(self.currGameRecord.id, Game.P2)]
+        mainPlayerPos = None
+        for i, player in enumerate(players):
+            pos = Game.P1 if i == 0 else Game.P2
+            if player == self.player:
+                mainPlayerPos = pos
+            elif player == False:
+                self.opponent = Player.COMP if self.currGameRecord.mode == Mode.COMP else Player.GUEST
+            else:
+                self.opponent = player
+        return mainPlayerPos
 
     # Writes the moves of a given game to a text file (with a given gameRecord) using Pente notation.
     @staticmethod
@@ -376,17 +387,12 @@ class Gui(Ui):
     def _getComputerDifficulty(self, playGameWindow):
         for widget in playGameWindow.winfo_children(): widget.destroy()
         Label(playGameWindow, text="Choose the computer difficulty").grid(row=0, column=0, padx=10, pady=5)
-        Button(playGameWindow, text="Easy", command=partial(self._setComputerDifficulty, playGameWindow, 1)).grid(row=1, column=0, padx=5)
-        Button(playGameWindow, text="Medium", command=partial(self._setComputerDifficulty, playGameWindow, 2)).grid(row=2, column=0, padx=5)
-        Button(playGameWindow, text="Hard", command=partial(self._setComputerDifficulty, playGameWindow, 3)).grid(row=3, column=0, padx=5)
-
-    # Sets the computer difficulty and calls the choosePlayer procedure for the user to choose their player number.
-    def _setComputerDifficulty(self, playGameWindow, difficulty):
-        self.compDifficulty = difficulty
-        self._choosePlayer(playGameWindow, Mode.COMP)
+        Button(playGameWindow, text="Easy", command=partial(self._choosePlayer, playGameWindow, Mode.COMP, 1)).grid(row=1, column=0, padx=5)
+        Button(playGameWindow, text="Medium", command=partial(self._choosePlayer, playGameWindow, Mode.COMP, 2)).grid(row=2, column=0, padx=5)
+        Button(playGameWindow, text="Hard", command=partial(self._choosePlayer, playGameWindow, Mode.COMP, 3)).grid(row=3, column=0, padx=5)
 
     # Creates a window that allows the player to choose whether they play as player 1 or player 2.
-    def _choosePlayer(self, playGameWindow, mode):
+    def _choosePlayer(self, playGameWindow, mode, compDifficulty=-1):
         if mode == Mode.COMP:
             self.opponent = Player.COMP
         if (self.player == Player.GUEST) and (self.opponent == Player.GUEST):
@@ -403,13 +409,13 @@ class Gui(Ui):
                     player = self.player
                 txt = f"Would {player} like to be player 1 or player 2?"
             Label(playGameWindow, text=txt).grid(row=0, column=0, columnspan=2, padx=10, pady=5)
-            Button(playGameWindow, text="Player 1", command=partial(self._playNewGame, playGameWindow, Game.P1, mode)).grid(row=1, column=0, padx=5)
-            Button(playGameWindow, text="Player 2", command=partial(self._playNewGame, playGameWindow, Game.P2, mode)).grid(row=1, column=1, padx=5)
+            Button(playGameWindow, text="Player 1", command=partial(self._playNewGame, playGameWindow, Game.P1, mode, compDifficulty)).grid(row=1, column=0, padx=5)
+            Button(playGameWindow, text="Player 2", command=partial(self._playNewGame, playGameWindow, Game.P2, mode, compDifficulty)).grid(row=1, column=1, padx=5)
 
     # Destroys the choose player window and calls the playGame function to start the game.
-    def _playNewGame(self, playGameWindow, player, mode):
+    def _playNewGame(self, playGameWindow, player, mode, compDifficulty=-1):
         playGameWindow.destroy()
-        self._playGame(player, mode)
+        self._playGame(player, mode, compDifficulty)
 
     # Creates a window providing the user the option to choose a saved game to load.
     def _createLoadGameWindow(self, viewGamesWindow):
@@ -423,7 +429,7 @@ class Gui(Ui):
             Label(loadGameWindow, text="Select an ongoing game:").grid(row=0, column=0, padx=10, pady=5)
             values = []
             for gameRecord in games:
-                values.append(self._gameString(gameRecord))
+                values.append(Ui._gameString(gameRecord))
             comboBox = ttk.Combobox(loadGameWindow, values=values, width=100)
             comboBox.current(0)
             comboBox.grid(row=1, column=0, padx=10, pady=5)
@@ -433,19 +439,10 @@ class Gui(Ui):
     def _loadGame(self, loadGameWindow, comboBox, games):
         gameInfo = comboBox.get()
         for gameRecord in games:
-            if self._gameString(gameRecord) == gameInfo:
+            if Ui._gameString(gameRecord) == gameInfo:
                 break
         self.currGameRecord = gameRecord
-        players = [Database.getPlayerGameUsername(self.currGameRecord.id, Game.P1), Database.getPlayerGameUsername(self.currGameRecord.id, Game.P2)]
-        mainPlayerPos = None
-        for i, player in enumerate(players):
-            pos = Game.P1 if i == 0 else Game.P2
-            if player == self.player:
-                mainPlayerPos = pos
-            elif player == False:
-                self.opponent = Player.COMP if self.currGameRecord.mode == Mode.COMP else Player.GUEST
-            else:
-                self.opponent = player
+        mainPlayerPos = self._loadPlayers()
         loadGameWindow.destroy()
         self._playGame(mainPlayerPos, new=False)
 
@@ -458,7 +455,7 @@ class Gui(Ui):
             if p == Player.GUEST:
                 players.append("Guest")
             elif p == Player.COMP:
-                players.append("Computer")
+                players.append(f"Computer({Ui._convCompDifficulty(self.currGameRecord.compDifficulty)})")
             else:
                 players.append(p)
         return players
@@ -664,7 +661,7 @@ class Gui(Ui):
             viewGamesWindow.title("View games")
             Label(viewGamesWindow, text="Saved games:").grid(row=0, column=0, columnspan=3, padx=10, pady=5)
             for i, gameRecord in enumerate(games):
-                Label(viewGamesWindow, text=f"{i+1}. {self._gameString(gameRecord)}").grid(row=i+1, column=0, columnspan=4, padx=10, pady=5)
+                Label(viewGamesWindow, text=f"{i+1}. {Ui._gameString(gameRecord)}").grid(row=i+1, column=0, columnspan=4, padx=10, pady=5)
             Button(viewGamesWindow, text="Load game", command=partial(self._createLoadGameWindow, viewGamesWindow)).grid(row=i+2, column=0, padx=10, pady=5)
             Button(viewGamesWindow, text="Delete game", command=partial(self._createDeleteGameWindow, viewGamesWindow, games)).grid(row=i+2, column=1, padx=10, pady=5)
             Button(viewGamesWindow, text="Export game moves", command=partial(self._createExportGameMovesWindow, viewGamesWindow, games)).grid(row=i+2, column=2, padx=10, pady=5)
@@ -678,7 +675,7 @@ class Gui(Ui):
         Label(exportGameWindow, text="Select a game:").grid(row=0, column=0, padx=10, pady=5)
         values = []
         for gameRecord in games:
-            values.append(self._gameString(gameRecord))
+            values.append(Ui._gameString(gameRecord))
         comboBox = ttk.Combobox(exportGameWindow, values=values, width=100)
         comboBox.current(0)
         comboBox.grid(row=1, column=0, padx=10, pady=5)
@@ -688,7 +685,7 @@ class Gui(Ui):
     def _exportGameMoveFile(self, exportGameWindow, comboBox, games):
         gameInfo = comboBox.get()
         for gameRecord in games:
-            if self._gameString(gameRecord) == gameInfo:
+            if Ui._gameString(gameRecord) == gameInfo:
                 break
         Ui._exportGameMoves(gameRecord)
         exportGameWindow.destroy()
@@ -702,7 +699,7 @@ class Gui(Ui):
         Label(deleteGameWindow, text="Select a game:").grid(row=0, column=0, padx=10, pady=5)
         values = []
         for gameRecord in games:
-            values.append(self._gameString(gameRecord))
+            values.append(Ui._gameString(gameRecord))
         comboBox = ttk.Combobox(deleteGameWindow, values=values, width=100)
         comboBox.current(0)
         comboBox.grid(row=1, column=0, padx=10, pady=5)
@@ -712,7 +709,7 @@ class Gui(Ui):
     def _deleteGame(self, deleteGameWindow, comboBox, games):
         gameInfo = comboBox.get()
         for gameRecord in games:
-            if self._gameString(gameRecord) == gameInfo:
+            if Ui._gameString(gameRecord) == gameInfo:
                 break
         Database.deleteGame(gameRecord.id)
         deleteGameWindow.destroy()
@@ -799,14 +796,14 @@ class Gui(Ui):
             self.headLabel.config(text=f"{players[0]} v.s. {players[1]}")
 
     # Given the player number of the user (mainPlayer), the game mode, and whether the game is new or loaded, the playGame function creates the board images and starts the game.
-    def _playGame(self, mainPlayer, mode=Mode.PVP, new=True):
+    def _playGame(self, mainPlayer, mode=Mode.PVP, compDifficulty=-1, new=True):
         self.playing = True
         self.currPlayers[mainPlayer] = Player.MAIN
         otherPlayer = Game.P1 if mainPlayer == Game.P2 else Game.P2
         self.currPlayers[otherPlayer] = Player.OPP
         if new:
             gridsize = 19
-            self.currGameRecord = GameRecord(game=Game(gridsize), mode=mode)
+            self.currGameRecord = GameRecord(game=Game(gridsize), mode=mode, compDifficulty=compDifficulty)
         else:
             gridsize = len(self.currGameRecord.game.board)
         self.currentBoard = [[Game.EMPTY for _ in range(gridsize)] for _ in range(gridsize)]
@@ -877,7 +874,7 @@ class Gui(Ui):
 
     # Gets a move from the AI and plays it on the board.
     def _playComputer(self):
-        row, col = Ai.play(self.currGameRecord.game.board, self.currGameRecord.game.captures, self.currGameRecord.game.player, self.compDifficulty)
+        row, col = Ai.play(self.currGameRecord.game.board, self.currGameRecord.game.captures, self.currGameRecord.game.player, self.currGameRecord.compDifficulty)
         self._play(row, col)
         self._updateState()             
 
@@ -1065,15 +1062,15 @@ class Terminal(Ui):
     # Displays one of two possible game mode menus (one for guest and one for logged in accounts), asks for a choice from the user, and returns it.
     def _chooseMode(self):
         memberMenu = """
-        Please choose a game mode:
-        1. Player v.s. Player
-        2. Player v.s. Computer
-        3. Player v.s. Player (LAN)
+Please choose a game mode:
+1. Player v.s. Player
+2. Player v.s. Computer
+3. Player v.s. Player (LAN)
         """
         guestMenu = """
-        Please choose a game mode:
-        1. Player v.s. Player
-        2. Player v.s. Computer
+Please choose a game mode:
+1. Player v.s. Player
+2. Player v.s. Computer
         """
         if self.player == Player.GUEST:
             print(guestMenu)
@@ -1099,13 +1096,13 @@ class Terminal(Ui):
             print("There are no games to view.")
         else:
             for i, gameRecord in enumerate(games):
-                print(f"{i+1}. {self._gameString(gameRecord)}")
+                print(f"{i+1}. {Ui._gameString(gameRecord)}")
             menu = """
-            Choose an option:
-            1. Load game
-            2. Delete game
-            3. Export game moves
-            4. Go back
+Choose an option:
+1. Load game
+2. Delete game
+3. Export game moves
+4. Go back
             """
             print(menu)
             inp = Terminal._getChoice(1, 4)
@@ -1128,9 +1125,9 @@ class Terminal(Ui):
             if mode == Mode.PVP:
                 self.opponent = Player.GUEST
                 menu = """
-            The other player will:
-            1. Play as a guest
-            2. Login
+The other player will:
+1. Play as a guest
+2. Login
                 """
                 print(menu)
                 if Terminal._getChoice(1, 2) == 2:
@@ -1138,18 +1135,18 @@ class Terminal(Ui):
             elif mode == Mode.COMP:
                 self.opponent = Player.COMP
                 menu = """
-            Select difficulty level:
-            1. Easy
-            2. Medium
-            3. Hard
+Select difficulty level:
+1. Easy
+2. Medium
+3. Hard
                 """
                 print(menu)
-                self.compDifficulty = Terminal._getChoice(1, 3)
+                self.currGameRecord.compDifficulty = Terminal._getChoice(1, 3)
             player = self._choosePlayer()
         otherPlayer = Game.P2 if player == Game.P1 else Game.P1
         self.currPlayers[player] = Player.MAIN
         self.currPlayers[otherPlayer] = Player.OPP
-        self._play()
+        self._play()        
 
     # Displays one of two main menus (one for guest and one for logged in accounts), and asks for an option from the user.
     # The user's choice is used to call a relevant function to deal with the user's request.
@@ -1160,26 +1157,26 @@ class Terminal(Ui):
         while 1:
 
             guestMenu = """
-            Welcome to Pente!
+Welcome to Pente!
 
-            Choose an option:
-            1. Display rules
-            2. Play new game
-            3. Login
-            4. Create Account
-            5. Quit
+Choose an option:
+1. Display rules
+2. Play new game
+3. Login
+4. Create Account
+5. Quit
             """
 
             memberMenu = f"""
-            Welcome to Pente {self.player}!
+Welcome to Pente {self.player}!
 
-            Choose an option:
-            1. Display rules
-            2. Play new game
-            3. View games
-            4. View profile
-            5. Logout
-            6. Quit
+Choose an option:
+1. Display rules
+2. Play new game
+3. View games
+4. View profile
+5. Logout
+6. Quit
             """
 
             if self.player == Player.GUEST:
@@ -1199,19 +1196,19 @@ class Terminal(Ui):
         totalNumberOfGames = sum([numberOfWins, numberOfLosses, numberOfDraws])
         rank = Database.getPlayerRank(self.player)
         profileString = f"""
-            {self.player}'s profile:
+{self.player}'s profile:
 
-            Number of finished games: {totalNumberOfGames}
-            Number of won games: {numberOfWins}
-            Number of lost games: {numberOfLosses}
-            Number of drawn games: {numberOfDraws}
-            Number of saved games: {numberOfSavedGames}
-            Number of ongoing games: {numberOfOngoings}
-            Score: {score}
-            Rank: {rank}
+Number of finished games: {totalNumberOfGames}
+Number of won games: {numberOfWins}
+Number of lost games: {numberOfLosses}
+Number of drawn games: {numberOfDraws}
+Number of saved games: {numberOfSavedGames}
+Number of ongoing games: {numberOfOngoings}
+Score: {score}
+Rank: {rank}
 
-            Profile created on {datetime.strftime(whenSaved, "%d/%m/%Y, %H:%M:%S")}
-            """
+Profile created on {datetime.strftime(whenSaved, "%d/%m/%Y, %H:%M:%S")}
+        """
         print(profileString)
         print()
         input("Press any key to go back > ")
@@ -1364,10 +1361,14 @@ class Terminal(Ui):
         else:
             print("Ongoing games:")
             for i, gameRecord in enumerate(games):
-                print(f"{i+1}. {self._gameString(gameRecord)}")
+                print(f"{i+1}. {Ui._gameString(gameRecord)}")
             print("Select a game (e.g. 1, 2...)")
             inp = Terminal._getChoice(1, i+1)
             self.currGameRecord = games[inp-1]
+            mainPlayerPos = self._loadPlayers()
+            self.currPlayers[mainPlayerPos] = Player.MAIN
+            otherPlayer = Game.P1 if mainPlayerPos == Game.P2 else Game.P2
+            self.currPlayers[otherPlayer] = Player.OPP
             self._play()
 
     # Given a list of games, the deleteGame function asks for a choice from the player for which game to delete.
@@ -1455,7 +1456,7 @@ class Terminal(Ui):
         else:
             self.currGameRecord.game.play(gridsize//2, gridsize//2)
             if self._getUsernameOfPlayerNumber(self.currGameRecord.game.player) == Player.COMP:
-                row, col = Ai.play(self.currGameRecord.game.board, self.currGameRecord.game.captures, self.currGameRecord.game.player, self.compDifficulty)
+                row, col = Ai.play(self.currGameRecord.game.board, self.currGameRecord.game.captures, self.currGameRecord.game.player, self.currGameRecord.compDifficulty)
                 print(f"COMPUTER PLAYED: {row+1}{chr(col+65)}")
                 self.currGameRecord.game.play(row, col)
 
@@ -1464,7 +1465,7 @@ class Terminal(Ui):
             playerStr = "Player 1 to play" if self.currGameRecord.game.player == Game.P1 else "Player 2 to play"
             print(playerStr)
             if self._getUsernameOfPlayerNumber(self.currGameRecord.game.player) == Player.COMP:
-                row, col = Ai.play(self.currGameRecord.game.board, self.currGameRecord.game.captures, self.currGameRecord.game.player, self.compDifficulty)
+                row, col = Ai.play(self.currGameRecord.game.board, self.currGameRecord.game.captures, self.currGameRecord.game.player, self.currGameRecord.compDifficulty)
                 print(f"COMPUTER PLAYED: {row+1}{chr(col+65)}")
                 self.currGameRecord.game.play(row, col)
             elif self.currGameRecord.mode == Mode.LAN and self.currPlayers[self.currGameRecord.game.player] != Player.MAIN:
