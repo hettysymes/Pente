@@ -210,6 +210,7 @@ def isUniqueUsername(username):
     return len(players) == 0
 
 # Given the usernames of the players and the game record, the saveGame function saves the game into the Game table, and also associates it with the Player entries in the PlayerGame table.
+# The function returns the game id of the game that it has saved
 def saveGame(username1, username2, gameRecord):
     name = gameRecord.name
     whenSaved = pickle.dumps(gameRecord.whenSaved)
@@ -230,6 +231,8 @@ def saveGame(username1, username2, gameRecord):
         savePlayerGame(username1, gameId, Game.P1)
     if username2 not in invalidUsernames:
         savePlayerGame(username2, gameId, Game.P2)
+    
+    return gameId
 
 # Given a game record, updates the game with the same id in the Game table with the new game information.
 def updateGame(gameRecord):

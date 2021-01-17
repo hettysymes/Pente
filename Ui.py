@@ -497,7 +497,7 @@ class Gui(Ui):
             self.currGameRecord.whenSaved, self.currGameRecord.name = datetime.now(), gameName
             p1 = self._getUsernameOfPlayerNumber(Game.P1)
             p2 = self._getUsernameOfPlayerNumber(Game.P2)
-            Database.saveGame(p1, p2, self.currGameRecord)
+            self.currGameRecord.id = Database.saveGame(p1, p2, self.currGameRecord)
             saveGameWindow.destroy()
 
     # Creates a window allowing the user to enter a username and password with which to create a new account.
@@ -1341,7 +1341,7 @@ Profile created on {datetime.strftime(whenSaved, "%d/%m/%Y, %H:%M:%S")}
         else:
             name = input("Enter name to save game as: ")
             self.currGameRecord.name = name
-            Database.saveGame(self._getUsernameOfPlayerNumber(Game.P1), self._getUsernameOfPlayerNumber(Game.P2), self.currGameRecord)
+            self.currGameRecord.id = Database.saveGame(self._getUsernameOfPlayerNumber(Game.P1), self._getUsernameOfPlayerNumber(Game.P2), self.currGameRecord)
         print("Game saved successfully.")
 
     # Given games, it gives the user a choice to choose which game to export moves for, and then does this by calling the Ui exportGameMoves function.
