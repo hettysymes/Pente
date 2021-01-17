@@ -422,7 +422,7 @@ class Gui(Ui):
         viewGamesWindow.destroy()
         games = Database.loadGames(self.player, Game.ONGOING)
         if not games:
-            self._createNotificationWindow("Load game", "You have no ongoing games")
+            self._createNotificationWin("Load game", "You have no ongoing games")
         else:
             loadGameWindow = Toplevel(self.root)
             loadGameWindow.title("Load game")
