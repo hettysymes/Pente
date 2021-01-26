@@ -11,6 +11,7 @@ from functools import partial
 from PIL import Image, ImageDraw
 from Client import Client
 import threading
+import getpass
 
 # The Player Enum class defines different player types.
 Player = Enum("Player", ["MAIN", "OPP", "GUEST", "COMP"])
@@ -1252,7 +1253,7 @@ Profile created on {datetime.strftime(whenSaved, "%d/%m/%Y, %H:%M:%S")}
                     continue
                 else:
                     return
-            password = input("Password: ")
+            password = getpass.getpass()
             if Database.checkPassword(username, password):
                 print("Login successful!")
                 if player == Player.MAIN:
@@ -1278,8 +1279,8 @@ Profile created on {datetime.strftime(whenSaved, "%d/%m/%Y, %H:%M:%S")}
                     continue
                 else:
                     return
-            password = input("Enter password: ")
-            passwordConfirm = input("Confirm password: ")
+            password = getpass.getpass(prompt="Enter password: ")
+            passwordConfirm = getpass.getpass(prompt="Confirm password: ")
             if password == passwordConfirm:
                 Database.savePlayer(username, password, datetime.now())
                 print("Account creation successful!")
