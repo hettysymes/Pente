@@ -14,3 +14,9 @@ This game has the following features:
 * The GUI has a togglable option for the last played piece to be marked by a dot.
 * Players can get suggested moves for Player v.s. Player and Player v.s. Computer games if they wish.
 * Players can export a text file of the record of moves played in a saved game.
+
+## Installation
+After cloning the repository, ensure that the necessary dependencies are installed by running `pip install -r requirements.txt`.
+
+## Running the game
+To play the game, run `python Pente.py [g|t]`, depending on whether you would like to play with the graphical interface (`g`) or the terminal interface (`t`).
